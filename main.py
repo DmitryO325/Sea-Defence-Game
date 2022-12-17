@@ -14,6 +14,12 @@ class Window:
 class MainWindow(Window):
     def __init__(self):
         super().__init__()
+        pygame.mixer.music.load('Audio/Background.mp3')
+        pygame.mixer.music.play(-1)
+        # pygame.mixer.music.set_volume(0.5)
+        # pygame.mixer.music.stop()
+        # pygame.mixer.music.pause()
+        # pygame.mixer.music.unpause()
         self.Win = None
         self.button = Button(screen, 100, 100, 300, 150, text='Тестирование кнопки',
                              textColour=pygame.Color('blue'),
