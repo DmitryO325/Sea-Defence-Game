@@ -27,10 +27,10 @@ class Window:
                 if event.type == pygame.QUIT:
                     self.running = False
             pygame.display.flip()
-            pygame_widgets.update(events)
-            # for element in self.objects:
-            #     element.listen(events)
-            #     element.draw()
+            # pygame_widgets.update(events)
+            # # for element in self.objects:
+            # #     element.listen(events)
+            # #     element.draw()
 
     def hide(self):
         self.running = False
@@ -39,7 +39,11 @@ class Window:
 class MainWindow(Window):
     def __init__(self):
         super().__init__()
-        self.button_titles = ('name', 'level_mode', 'shipyard', 'survival', 'top_players', 'options', 'exit')
+        self.button_titles = ('name', 'survival', 'level_mode', 'shipyard', 'top_players', 'options', 'exit')
+
+        self.picture = pygame.image.load('Главное меню.png')
+        self.picture_size = self.picture.get_size()
+        self.screen.blit(self.picture, self.picture_size)
 
     def position_buttons(self):
         # button = Button(self.screen, 100, 100, 300, 150, text='Тестирование кнопки', textColour='blue',
@@ -48,7 +52,7 @@ class MainWindow(Window):
         #                 hoverColour='green')
 
         for number_of_button in range(1, 7):
-            Button(
+            button = Button(
                 self.screen,
                 round(self.width * 0.2),
                 round(self.height * (0.06 + number_of_button * 0.13 + 0.03)),
@@ -57,7 +61,9 @@ class MainWindow(Window):
                 colour='red'
             )
 
-        Button(
+            self.objects[self.button_titles[number_of_button]] = button
+
+        button = Button(
                 self.screen,
                 round(self.width * 0.885),
                 round(self.height * 0.03),
@@ -66,10 +72,22 @@ class MainWindow(Window):
                 colour='blue'
             )
 
+        self.objects[self.button_titles[0]] = button
+
+    def show(self):
+        while self.running:
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self.running = False
+            self.screen.blit(self.picture, (0, 0))
+            pygame_widgets.update(events)
+            pygame.display.flip()
+            # # for element in self.objects:
+            # #     element.listen(events)
+            # #     element.draw()
 
 
 win = MainWindow()
-print(win.width)
-print(win.height)
 win.position_buttons()
 win.show()
