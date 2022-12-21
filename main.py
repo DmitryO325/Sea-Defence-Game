@@ -5,10 +5,8 @@ import pygame_widgets
 
 class Window:
     def __init__(self):
-        pygame.init()
-
-        self.width = pygame.display.Info().current_w
-        self.height = pygame.display.Info().current_h
+        # self.width = pygame.display.Info().current_w
+        # self.height = pygame.display.Info().current_h
 
         self.size = self.width, self.height = 1600, 900
         self.screen = pygame.display.set_mode(self.size)
@@ -36,14 +34,20 @@ class Window:
         self.running = False
 
 
-class MainWindow(Window):
+class Menu(Window):
     def __init__(self):
         super().__init__()
-        self.button_titles = ('name', 'survival', 'level_mode', 'shipyard', 'top_players', 'options', 'exit')
-
         self.picture = pygame.image.load('Главное меню.png')
-        self.picture_size = self.picture.get_size()
-        self.screen.blit(self.picture, self.picture_size)
+        self.picture = pygame.transform.scale(self.picture, self.screen.get_size())
+
+
+class MainWindow(Menu):
+    def __init__(self):
+        super().__init__()
+        self.button_titles = ('Имя', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
+
+        self.button_functions = (self.to_survival, self.to_level_mode, self.to_shipyard,
+                                 self.to_top_players, self.to_options, self.to_exit)
 
     def position_buttons(self):
         # button = Button(self.screen, 100, 100, 300, 150, text='Тестирование кнопки', textColour='blue',
@@ -58,23 +62,26 @@ class MainWindow(Window):
                 round(self.height * (0.06 + number_of_button * 0.13 + 0.03)),
                 round(self.width * 0.6),
                 round(self.height * 0.1),
-                colour='red'
+                colour='yellow', text=self.button_titles[number_of_button], textColour='red',
+                fontSize=60, radius=10, hoverColour='cyan', pressedColour='blue',
+                onRelease=self.button_functions[number_of_button - 1]
             )
 
             self.objects[self.button_titles[number_of_button]] = button
 
-        button = Button(
-                self.screen,
-                round(self.width * 0.885),
-                round(self.height * 0.03),
-                round(self.width * 0.1),
-                round(self.height * 0.05),
-                colour='blue'
-            )
+        button = Button(self.screen,
+                        round(self.width * 0.885),
+                        round(self.height * 0.03),
+                        round(self.width * 0.1),
+                        round(self.height * 0.05),
+                        colour='green', text='username'
+                        )
 
         self.objects[self.button_titles[0]] = button
 
     def show(self):
+        self.position_buttons()
+
         while self.running:
             events = pygame.event.get()
             for event in events:
@@ -83,11 +90,48 @@ class MainWindow(Window):
             self.screen.blit(self.picture, (0, 0))
             pygame_widgets.update(events)
             pygame.display.flip()
+
             # # for element in self.objects:
             # #     element.listen(events)
             # #     element.draw()
 
+    def to_options(self):
+        self.running = False
+        # self.Win = MainWindow2()
 
-win = MainWindow()
-win.position_buttons()
-win.show()
+    def to_top_players(self):
+        self.running = False
+        # self.Win = MainWindow2()
+
+    def to_shipyard(self):
+        self.running = False
+        # self.Win = MainWindow2()
+
+    def to_level_mode(self):
+        self.running = False
+        # self.Win = MainWindow2()
+
+    def to_survival(self):
+        self.running = False
+        # self.Win = MainWindow2()
+
+    def to_exit(self):
+        self.running = False
+
+
+class Options(Menu):
+    pass
+
+
+class TopPlayers(Menu):
+    pass
+
+
+class Shipyard(Menu):
+    pass
+
+
+if __name__ == '__main__':
+    pygame.init()
+    win = MainWindow()
+    win.show()
