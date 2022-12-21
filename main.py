@@ -14,8 +14,7 @@ class Window:
 class MainWindow(Window):
     def __init__(self):
         super().__init__()
-        pygame.mixer.music.load('Audio/Background.mp3')
-        pygame.mixer.music.play(-1)
+
         # pygame.mixer.music.set_volume(0.5)
         # pygame.mixer.music.stop()
         # pygame.mixer.music.pause()
@@ -77,4 +76,6 @@ if __name__ == '__main__':
     pygame.init()
     size = width, height = 800, 600
     screen = pygame.display.set_mode(size)
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play(-1)
     MainWindow()
