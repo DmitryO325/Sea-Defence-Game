@@ -18,9 +18,9 @@ class MainWindow(Window):
         self.picture = pygame.image.load('Главное меню.png')
         self.picture = pygame.transform.scale(self.picture, (width, height))
         self.picture_size = self.picture.get_size()
-        self.button_titles = ('name', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
+        self.button_titles = ('name', 'survival', 'level_mode', 'shipyard', 'top_players', 'options', 'exit')
         self.button_functions = (self.to_survival, self.to_level_mode, self.to_shipyard,
-                                 self.to_top_players, self.to_options, self.to_exit)
+                                 self.to_top_players, self.to_options, self.end)
         for number_of_button in range(1, 7):  # создание кнопок для других окон
             Button(
                 screen,
@@ -52,7 +52,7 @@ class MainWindow(Window):
                 element.draw()
             pygame.display.flip()
 
-    def to_exit(self):
+    def end(self):
         self.running = False
 
     def to_options(self):
