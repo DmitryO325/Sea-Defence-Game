@@ -10,7 +10,7 @@ class Window:
         self.width = pygame.display.Info().current_w
         self.height = pygame.display.Info().current_h
 
-        self.size = self.width, self.height = 500, 1000
+        self.size = self.width, self.height = 1600, 900
         self.screen = pygame.display.set_mode(self.size)
 
         self.running = True
@@ -47,17 +47,25 @@ class MainWindow(Window):
         #                 colour='red', borderThickness=10, pressedColour='yellow',
         #                 hoverColour='green')
 
-        for number_of_button in range(7):
-            button = Button(
+        for number_of_button in range(1, 7):
+            Button(
                 self.screen,
                 round(self.width * 0.2),
-                round(self.height * (number_of_button * 0.14 + 0.03)),
+                round(self.height * (0.06 + number_of_button * 0.13 + 0.03)),
                 round(self.width * 0.6),
                 round(self.height * 0.1),
                 colour='red'
             )
 
-            self.objects[self.button_titles[number_of_button]] = button
+        Button(
+                self.screen,
+                round(self.width * 0.885),
+                round(self.height * 0.03),
+                round(self.width * 0.1),
+                round(self.height * 0.05),
+                colour='blue'
+            )
+
 
 
 win = MainWindow()
