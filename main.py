@@ -15,8 +15,12 @@ class MainWindow(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
+        self.picture = pygame.image.load('Главное меню.png')
+        self.picture = pygame.transform.scale(self.picture, (width, height))
+        self.picture_size = self.picture.get_size()
         self.button_titles = ('name', 'survival', 'level_mode', 'shipyard', 'top_players', 'options', 'exit')
-        self.button_functions = ()
+        self.button_functions = (self.to_survival, self.to_level_mode, self.to_shipyard,
+                                 self.to_top_players, self.to_options, self.end)
         for number_of_button in range(1, 7):  # создание кнопок для других окон
             Button(
                 screen,
@@ -25,7 +29,8 @@ class MainWindow(Window):
                 round(width * 0.6),
                 round(height * 0.1),
                 colour='yellow', text=self.button_titles[number_of_button], textColour='red',
-                fontSize=60, radius=10, hoverColour='cyan', pressedColour='blue'
+                fontSize=60, radius=10, hoverColour='cyan', pressedColour='blue',
+                onRelease=self.button_functions[number_of_button - 1]
             )
         Button(  # создание кнопки для настройки пользователя
             screen,
@@ -40,11 +45,15 @@ class MainWindow(Window):
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
-            pygame.display.flip()
+            screen.blit(self.picture, (0, 0))
             pygame_widgets.update(events)
             for element in self.objects:
                 element.listen(events)
                 element.draw()
+            pygame.display.flip()
+
+    def end(self):
+        self.running = False
 
     def to_options(self):
         self.running = False
@@ -97,7 +106,7 @@ class MainWindow2(Window):
 
 if __name__ == '__main__':
     pygame.init()
-    size = width, height = 800, 600
+    size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
     screen = pygame.display.set_mode(size)
     pygame.mixer.music.load('Audio/Background.mp3')
     pygame.mixer.music.play(-1)
