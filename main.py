@@ -12,14 +12,10 @@ def delete_widgets():
 
 class Window:
     def __init__(self):
-        # self.width = pygame.display.Info().current_w
-        # self.height = pygame.display.Info().current_h
-
-        self.size = self.width, self.height = 1920, 1080
+        self.size = self.width, self.height = 1600, 900
         self.screen = pygame.display.set_mode(self.size)
 
         self.running = True
-        self.objects = {}
 
     def resize(self, x, y):
         self.width = x
@@ -36,10 +32,6 @@ class Window:
                 if event.type == pygame.QUIT:
                     self.running = False
             pygame.display.flip()
-            # pygame_widgets.update(events)
-            # # for element in self.objects:
-            # #     element.listen(events)
-            # #     element.draw()
 
     def hide(self):
         self.running = False
@@ -65,7 +57,7 @@ class MainWindow(Menu):
 
     def position_buttons(self):
         for number_of_button in range(1, 7):
-            button = Button(
+            Button(
                 self.screen,
                 round(self.width * 0.2),
                 round(self.height * (0.06 + number_of_button * 0.13 + 0.03)),
@@ -76,17 +68,13 @@ class MainWindow(Menu):
                 onRelease=self.button_functions[number_of_button]
             )
 
-            self.objects[self.button_titles[number_of_button]] = button
-
-        button = Button(self.screen,
-                        round(self.width * 0.885),
-                        round(self.height * 0.03),
-                        round(self.width * 0.1),
-                        round(self.height * 0.05),
-                        colour='green', text='Имя', onRelease=self.button_functions[0]
-                        )
-
-        self.objects[self.button_titles[0]] = button
+        Button(self.screen,
+               round(self.width * 0.885),
+               round(self.height * 0.03),
+               round(self.width * 0.1),
+               round(self.height * 0.05),
+               colour='green', text='Имя', onRelease=self.button_functions[0]
+               )
 
     def show(self):
         self.position_buttons()
@@ -100,29 +88,20 @@ class MainWindow(Menu):
             pygame_widgets.update(events)
             pygame.display.flip()
 
-            # # for element in self.objects:
-            # #     element.listen(events)
-            # #     element.draw()
-
     def to_options(self):
         self.switch()
-        # self.Win = MainWindow2()
 
     def to_top_players(self):
         self.switch()
-        # self.Win = MainWindow2()
 
     def to_shipyard(self):
         self.switch()
-        # self.Win = MainWindow2()
 
     def to_level_mode(self):
         self.switch()
-        # self.Win = MainWindow2()
 
     def to_survival(self):
         self.switch()
-        # self.Win = MainWindow2()
 
     def to_name(self):
         self.switch()
@@ -149,13 +128,19 @@ class Name(Menu):
         super().__init__()
         self.Win = None
 
-        connection = sqlite3.connect('Файлы базы данных/name.sqlite')
-        cursor = connection.cursor()
-        self.names = tuple(map(lambda x: x[0], cursor.execute('''SELECT name FROM data''').fetchall()))
+        self.connection = sqlite3.connect('Файлы базы данных/name.sqlite')
+        self.cursor = self.connection.cursor()
+        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names = tuple(map(lambda x: x[1], self.names_data))
+        self.change = False
+
+        with open('preferences.txt') as file:
+            self.file_data = file.readlines()
+            name_id = int(self.file_data[0][7:])
 
         self.names_combobox = Dropdown(self.screen, round(0.4 * self.width), round(0.1 * self.height),
                                        round(0.2 * self.width), round(0.05 * self.height),
-                                       name=self.names[0], choices=self.names, fontSize=54,
+                                       name=self.names[name_id - 1], choices=self.names, fontSize=54,
                                        colour='green', hoverColour='yellow', pressedColour='red')
 
         self.draw_buttons()
@@ -177,17 +162,40 @@ class Name(Menu):
         Button(
             self.screen,
             round(self.width * 0.75),
-            round(self.height * (0.7 + 1 * 0.15)),
+            round(self.height * 0.85),
             round(self.width * 0.2),
             round(self.height * 0.1),
-            colour='blue', text='В главное меню', textColour='yellow',
+            colour='blue', text='Отмена', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
             onRelease=self.to_menu
+        )
+
+        Button(
+            self.screen,
+            round(self.width * 0.53),
+            round(self.height * 0.85),
+            round(self.width * 0.2),
+            round(self.height * 0.1),
+            colour='green', text='ОК', textColour='red',
+            fontSize=50, radius=10, hoverColour='lightgreen', pressedColour='darkgrey',
+            onRelease=self.change_data
         )
 
     def to_menu(self):
         self.switch()
         self.Win = MainWindow()
+
+    def change_data(self):
+        with open('preferences.txt', 'r+') as file:
+            try:
+                self.file_data[0] = f'name = {self.names.index(self.names_combobox.getSelected()) + 1}'
+
+            except ValueError:
+                pass
+
+            file.writelines(self.file_data)
+
+            self.to_menu()
 
 
 if __name__ == '__main__':
