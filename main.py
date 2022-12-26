@@ -192,6 +192,6 @@ class Name(Menu):
 
 if __name__ == '__main__':
     pygame.init()
-    window = MainWindow()
     pygame.mixer.music.load('Audio/Background.mp3')
     pygame.mixer.music.play()
+    window = MainWindow()
