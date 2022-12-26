@@ -3,6 +3,10 @@ from pygame_widgets.button import Button
 import pygame_widgets
 
 
+def delete_widgets():
+    pygame_widgets.WidgetHandler._widgets = []
+
+
 class Window:
     def __init__(self):
         # self.width = pygame.display.Info().current_w
@@ -17,6 +21,10 @@ class Window:
     def resize(self, x, y):
         self.width = x
         self.height = y
+
+    def switch(self):
+        self.running = False
+        delete_widgets()
 
     def show(self):
         while self.running:
@@ -96,27 +104,27 @@ class MainWindow(Menu):
             # #     element.draw()
 
     def to_options(self):
-        self.running = False
+        self.switch()
         # self.Win = MainWindow2()
 
     def to_top_players(self):
-        self.running = False
+        self.switch()
         # self.Win = MainWindow2()
 
     def to_shipyard(self):
-        self.running = False
+        self.switch()
         # self.Win = MainWindow2()
 
     def to_level_mode(self):
-        self.running = False
+        self.switch()
         # self.Win = MainWindow2()
 
     def to_survival(self):
-        self.running = False
+        self.switch()
         # self.Win = MainWindow2()
 
     def to_exit(self):
-        self.running = False
+        self.switch()
 
 
 class Options(Menu):
@@ -128,6 +136,10 @@ class TopPlayers(Menu):
 
 
 class Shipyard(Menu):
+    pass
+
+
+class Name(Menu):
     pass
 
 
