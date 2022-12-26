@@ -12,7 +12,7 @@ class Window:
         # self.width = pygame.display.Info().current_w
         # self.height = pygame.display.Info().current_h
 
-        self.size = self.width, self.height = 1600, 900
+        self.size = self.width, self.height = 1920, 1080
         self.screen = pygame.display.set_mode(self.size)
 
         self.running = True
@@ -54,7 +54,7 @@ class MainWindow(Menu):
         super().__init__()
         self.button_titles = ('Имя', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
 
-        self.button_functions = (self.to_survival, self.to_level_mode, self.to_shipyard,
+        self.button_functions = (self.to_name, self.to_survival, self.to_level_mode, self.to_shipyard,
                                  self.to_top_players, self.to_options, self.to_exit)
 
     def position_buttons(self):
@@ -72,7 +72,7 @@ class MainWindow(Menu):
                 round(self.height * 0.1),
                 colour='yellow', text=self.button_titles[number_of_button], textColour='red',
                 fontSize=60, radius=10, hoverColour='cyan', pressedColour='blue',
-                onRelease=self.button_functions[number_of_button - 1]
+                onRelease=self.button_functions[number_of_button]
             )
 
             self.objects[self.button_titles[number_of_button]] = button
@@ -82,7 +82,7 @@ class MainWindow(Menu):
                         round(self.height * 0.03),
                         round(self.width * 0.1),
                         round(self.height * 0.05),
-                        colour='green', text='username'
+                        colour='green', text='Имя', onRelease=self.button_functions[0]
                         )
 
         self.objects[self.button_titles[0]] = button
@@ -123,6 +123,9 @@ class MainWindow(Menu):
         self.switch()
         # self.Win = MainWindow2()
 
+    def to_name(self):
+        self.switch()
+
     def to_exit(self):
         self.switch()
 
@@ -140,7 +143,10 @@ class Shipyard(Menu):
 
 
 class Name(Menu):
-    pass
+    def __init__(self):
+        super().__init__()
+
+
 
 
 if __name__ == '__main__':
