@@ -195,7 +195,7 @@ class Name(Menu):
 
             file.writelines(self.file_data)
 
-            self.to_menu()
+        self.to_menu()
 
 
 if __name__ == '__main__':
