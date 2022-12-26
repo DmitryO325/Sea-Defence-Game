@@ -1,5 +1,8 @@
+import sqlite3
+
 import pygame
 from pygame_widgets.button import Button
+from pygame_widgets.dropdown import Dropdown
 import pygame_widgets
 
 
@@ -52,17 +55,15 @@ class Menu(Window):
 class MainWindow(Menu):
     def __init__(self):
         super().__init__()
-        self.button_titles = ('Имя', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
+        self.Win = None
 
+        self.button_titles = ('Имя', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
         self.button_functions = (self.to_name, self.to_survival, self.to_level_mode, self.to_shipyard,
                                  self.to_top_players, self.to_options, self.to_exit)
 
-    def position_buttons(self):
-        # button = Button(self.screen, 100, 100, 300, 150, text='Тестирование кнопки', textColour='blue',
-        #                 fontSize=30,
-        #                 colour='red', borderThickness=10, pressedColour='yellow',
-        #                 hoverColour='green')
+        self.show()
 
+    def position_buttons(self):
         for number_of_button in range(1, 7):
             button = Button(
                 self.screen,
@@ -125,6 +126,7 @@ class MainWindow(Menu):
 
     def to_name(self):
         self.switch()
+        self.Win = Name()
 
     def to_exit(self):
         self.switch()
@@ -145,11 +147,51 @@ class Shipyard(Menu):
 class Name(Menu):
     def __init__(self):
         super().__init__()
+        self.Win = None
 
+        connection = sqlite3.connect('Файлы базы данных/name.sqlite')
+        cursor = connection.cursor()
+        self.names = tuple(map(lambda x: x[0], cursor.execute('''SELECT name FROM data''').fetchall()))
 
+        self.names_combobox = Dropdown(self.screen, round(0.4 * self.width), round(0.1 * self.height),
+                                       round(0.2 * self.width), round(0.05 * self.height),
+                                       name=self.names[0], choices=self.names, fontSize=54,
+                                       colour='green', hoverColour='yellow', pressedColour='red')
+
+        self.draw_buttons()
+        self.show()
+
+    def show(self):
+        while self.running:
+            events = pygame.event.get()
+
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            self.screen.blit(self.picture, (0, 0))
+            pygame_widgets.update(events)
+            pygame.display.flip()
+
+    def draw_buttons(self):
+        Button(
+            self.screen,
+            round(self.width * 0.75),
+            round(self.height * (0.7 + 1 * 0.15)),
+            round(self.width * 0.2),
+            round(self.height * 0.1),
+            colour='blue', text='В главное меню', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+    def to_menu(self):
+        self.switch()
+        self.Win = MainWindow()
 
 
 if __name__ == '__main__':
     pygame.init()
-    win = MainWindow()
-    win.show()
+    window = MainWindow()
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play()
