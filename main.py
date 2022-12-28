@@ -314,6 +314,6 @@ class Name(Menu):  # переход к окну "Имя"
 
 if __name__ == '__main__':
     pygame.init()
-    pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play()
+    # pygame.mixer.music.load('Audio/Background.mp3')
+    # pygame.mixer.music.play()
     window = MainWindow()
