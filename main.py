@@ -3,6 +3,7 @@ import sqlite3
 import pygame
 from pygame_widgets.button import Button
 from pygame_widgets.dropdown import Dropdown
+from pygame_widgets.textbox import TextBox
 import pygame_widgets
 
 
@@ -43,6 +44,18 @@ class Menu(Window):
         self.picture = pygame.image.load('Главное меню.png')
         self.picture = pygame.transform.scale(self.picture, self.screen.get_size())
 
+        self.connection = sqlite3.connect('Файлы базы данных/name.sqlite')
+        self.cursor = self.connection.cursor()
+
+        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names = tuple(map(lambda x: x[1], self.names_data))
+
+        with open('preferences.txt') as file:
+            self.file_data = file.readlines()
+            self.name_id = int(self.file_data[0][7:])
+
+        self.selected_name = self.names[self.name_id - 1]
+
 
 class MainWindow(Menu):
     def __init__(self):
@@ -73,7 +86,8 @@ class MainWindow(Menu):
                round(self.height * 0.03),
                round(self.width * 0.1),
                round(self.height * 0.05),
-               colour='green', text='Имя', onRelease=self.button_functions[0]
+               colour='green', text=self.selected_name, fontSize=32,
+               onRelease=self.button_functions[0]
                )
 
     def show(self):
@@ -81,9 +95,11 @@ class MainWindow(Menu):
 
         while self.running:
             events = pygame.event.get()
+
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
+
             self.screen.blit(self.picture, (0, 0))
             pygame_widgets.update(events)
             pygame.display.flip()
@@ -123,25 +139,11 @@ class Shipyard(Menu):
     pass
 
 
-class Name(Menu):
+class Name(Menu):  # переход к окну "Имя"
     def __init__(self):
         super().__init__()
         self.Win = None
-
-        self.connection = sqlite3.connect('Файлы базы данных/name.sqlite')
-        self.cursor = self.connection.cursor()
-        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
-        self.names = tuple(map(lambda x: x[1], self.names_data))
-        self.change = False
-
-        with open('preferences.txt') as file:
-            self.file_data = file.readlines()
-            name_id = int(self.file_data[0][7:])
-
-        self.names_combobox = Dropdown(self.screen, round(0.4 * self.width), round(0.1 * self.height),
-                                       round(0.2 * self.width), round(0.05 * self.height),
-                                       name=self.names[name_id - 1], choices=self.names, fontSize=54,
-                                       colour='green', hoverColour='yellow', pressedColour='red')
+        self.is_change = False
 
         self.draw_buttons()
         self.show()
@@ -154,12 +156,26 @@ class Name(Menu):
                 if event.type == pygame.QUIT:
                     self.running = False
 
+            if self.is_change:
+                self.draw_field()
+                self.is_change = False
+
             self.screen.blit(self.picture, (0, 0))
             pygame_widgets.update(events)
             pygame.display.flip()
 
     def draw_buttons(self):
-        Button(
+        self.names_combobox = Dropdown(
+            self.screen,
+            round(0.35 * self.width),
+            round(0.1 * self.height),
+            round(0.3 * self.width),
+            round(0.05 * self.height),
+            name=self.selected_name, choices=self.names, fontSize=54,
+            colour='green', hoverColour='yellow', pressedColour='red'
+        )
+
+        Button(  # кнопка "В меню без сохранения информации"
             self.screen,
             round(self.width * 0.75),
             round(self.height * 0.85),
@@ -170,7 +186,7 @@ class Name(Menu):
             onRelease=self.to_menu
         )
 
-        Button(
+        Button(  # кнопка "Сохранить и вернуться в меню"
             self.screen,
             round(self.width * 0.53),
             round(self.height * 0.85),
@@ -180,6 +196,20 @@ class Name(Menu):
             fontSize=50, radius=10, hoverColour='lightgreen', pressedColour='darkgrey',
             onRelease=self.change_data
         )
+
+        Button(  # кнопка для создания нового профиля
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.1),
+            round(self.width * 0.1),
+            round(self.height * 0.05),
+            colour='yellow', text='Новое имя', textColour='red',
+            fontSize=32, hoverColour='grey', pressedColour='darkgrey',
+            onRelease=self.show_change
+        )
+
+    def show_change(self):
+        self.is_change = True
 
     def to_menu(self):
         self.switch()
@@ -197,9 +227,64 @@ class Name(Menu):
 
         self.to_menu()
 
+    def draw_field(self):
+        Button(  # кнопка для создания нового профиля
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.1),
+            round(self.width * 0.1),
+            round(self.height * 0.05),
+            colour='yellow', text='Введите имя', textColour='red',
+            fontSize=32, hoverColour='grey', pressedColour='darkgrey'
+        )
+
+        self.name_box = TextBox(
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.18),
+            round(self.width * 0.2),
+            round(self.height * 0.05),
+            fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
+        )
+
+        Button(
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.26),
+            round(self.width * 0.2),
+            round(self.height * 0.05),
+            colour='blue', text='Создать', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.new_name
+        )
+
+        Button(
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.34),
+            round(self.width * 0.2),
+            round(self.height * 0.05),
+            colour='blue', text='Отмена', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.delete_new_name_field
+        )
+
+    def delete_new_name_field(self):
+        delete_widgets()
+        self.draw_buttons()
+
+    def new_name(self):
+        self.cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
+        self.connection.commit()
+
+        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names = tuple(map(lambda x: x[1], self.names_data))
+
+        self.delete_new_name_field()
+
 
 if __name__ == '__main__':
     pygame.init()
-    pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play()
+    # pygame.mixer.music.load('Audio/Background.mp3')
+    # pygame.mixer.music.play()
     window = MainWindow()
