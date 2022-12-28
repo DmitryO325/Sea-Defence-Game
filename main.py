@@ -3,6 +3,7 @@ import sqlite3
 import pygame
 from pygame_widgets.button import Button
 from pygame_widgets.dropdown import Dropdown
+from pygame_widgets.slider import Slider
 from pygame_widgets.textbox import TextBox
 import pygame_widgets
 
@@ -13,14 +14,19 @@ def delete_widgets():
 
 class Window:
     def __init__(self):
-        self.size = self.width, self.height = 1600, 900
+        self.max_resolution = pygame.display.Info().current_w, pygame.display.Info().current_h
+        self.size = self.width, self.height = size
         self.screen = pygame.display.set_mode(self.size)
+
+        self.FPS = 75
+        self.clock = pygame.time.Clock()
+        self.clock.tick(self.FPS)
 
         self.running = True
 
     def resize(self, x, y):
-        self.width = x
-        self.height = y
+        self.size = self.width, self.height = x, y
+        self.screen = pygame.display.set_mode(self.size)
 
     def switch(self):
         self.running = False
@@ -32,6 +38,7 @@ class Window:
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
+
             pygame.display.flip()
 
     def hide(self):
@@ -106,6 +113,7 @@ class MainWindow(Menu):
 
     def to_options(self):
         self.switch()
+        self.Win = Options()
 
     def to_top_players(self):
         self.switch()
@@ -128,7 +136,136 @@ class MainWindow(Menu):
 
 
 class Options(Menu):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.Win = None
+        self.music_box = TextBox(  # отображает громкость музыки
+            self.screen,
+            round(0.52 * self.width) + 200,
+            round(0.2 * self.height) - 10, 60,
+            50, fontSize=35
+        )
+
+        self.music_slider = Slider(  # ползунок громкости музыки
+            self.screen,
+            round(0.2 * self.width) + 200,
+            round(0.2 * self.height),
+            round(self.width * 0.3),
+            30,
+            colour='white', handleColour=pygame.Color('red'),
+            max=1, min=0, step=0.01, initial=1
+        )
+
+        self.sound_box = TextBox(  # отображает громкость звуков
+            self.screen,
+            round(0.52 * self.width) + 200,
+            round(0.3 * self.height) - 10,
+            60,
+            50,
+            fontSize=35
+        )
+
+        self.sound_slider = Slider(  # ползунок громкости звуков
+            self.screen,
+            round(0.2 * self.width) + 200,
+            round(0.3 * self.height),
+            round(0.3 * self.width),
+            30,
+            colour='white', handleColour=pygame.Color('red'),
+            max=1, min=0, step=0.01, initial=1
+        )
+
+        self.combobox1 = Dropdown(
+            self.screen,
+            round(0.2 * self.width) + 200,
+            round(0.4 * self.height),
+            round(0.3 * self.width),
+            50,
+            name='Разрешение экрана',  # настройка расширения экрана
+            choices=['Полный экран', '1280 x 720', '1920 x 1080',
+                     '2048 x 1152', '3840 x 2160'],
+            borderRadius=3, colour='grey', fontSize=50,
+            values=[self.max_resolution,
+                    (1280, 720), (1920, 1080), (2048, 1152), (3840, 2160)],
+            direction='down', textHAlign='centre'
+        )
+
+        self.combobox2 = Dropdown(
+            self.screen,
+            round(0.2 * self.width) + 200,
+            round(0.5 * self.height),
+            round(0.3 * self.width),
+            50, name='Максимальный FPS',  # настройка расширения экрана
+            choices=['120', '100', '80', '60', '40'],
+            borderRadius=3, colour='grey', fontSize=50,
+            direction='down', textHAlign='centre'
+        )
+
+        self.draw_buttons()
+
+        header_font = pygame.font.Font(None, 150)
+        header_text = header_font.render('Настройки', True, (255, 0, 0))
+
+        functions_texts = ['Музыка', 'Звуковые эффекты', 'Разрешение экрана', 'Частота кадров']
+        functions_font = pygame.font.Font(None, 60)
+
+        self.picture = pygame.image.load('Главное меню.png')
+        self.picture = pygame.transform.scale(self.picture, (self.width, self.height))
+
+        while self.running:
+            events = pygame.event.get()
+
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            self.update_sliders()
+            if self.combobox1.getSelected():
+                self.new_width, self.new_height = self.combobox1.getSelected()
+
+            if self.combobox2.getSelected():
+                self.clock.tick(int(self.combobox2.getSelected()))
+
+            self.screen.blit(self.picture, (0, 0))
+            self.screen.blit(header_text, (round(0.4 * self.width), round(0.05 * self.height)))
+
+            for num in range(len(functions_texts)):
+                function_text = functions_font.render(functions_texts[num], True, (255, 0, 0))
+                self.screen.blit(function_text, (round(0.01 * self.width), round((0.2 + num / 10) * self.height)))
+
+            pygame_widgets.update(events)
+            pygame.display.flip()
+
+    def update_sliders(self):
+        current_music_slider_value = self.music_slider.getValue()
+        self.music_box.setText(str(round(100 * current_music_slider_value)))
+        pygame.mixer.music.set_volume(current_music_slider_value)
+        current_sound_slider_value = self.sound_slider.getValue()
+        self.sound_box.setText(str(round(100 * current_sound_slider_value)))
+
+    def draw_buttons(self):
+        Button(
+            self.screen,
+            round(self.width * 0.75),
+            round(self.height * (0.7 + 1 * 0.15)),
+            round(self.width * 0.2),
+            round(self.height * 0.1),
+            colour='blue', text='В главное меню', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+    def to_menu(self):
+        self.switch()
+
+        try:
+            if self.new_width != self.width:
+                self.resize(self.new_width, self.new_height)
+
+        except AttributeError:
+            pass
+
+        self.Win = MainWindow()
 
 
 class TopPlayers(Menu):
@@ -314,6 +451,7 @@ class Name(Menu):  # переход к окну "Имя"
 
 if __name__ == '__main__':
     pygame.init()
-    # pygame.mixer.music.load('Audio/Background.mp3')
-    # pygame.mixer.music.play()
+    size = 1600, 900
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play()
     window = MainWindow()
