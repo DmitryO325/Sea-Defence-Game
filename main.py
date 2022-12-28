@@ -99,17 +99,17 @@ class Options(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
-        self.music_box = TextBox(screen, round(0.52 * width), round(0.2 * height) - 10, 60,
+        self.music_box = TextBox(screen, round(0.52 * width) + 200, round(0.2 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость музыки
-        self.music_slider = Slider(screen, round(0.2 * width), round(0.2 * height), round(width * 0.3), 30,
+        self.music_slider = Slider(screen, round(0.2 * width) + 200, round(0.2 * height), round(width * 0.3), 30,
                                    colour='white', handleColour=pygame.Color('red'),
                                    max=1, min=0, step=0.01, initial=1)  # ползунок громкости музыки
-        self.sound_box = TextBox(screen, round(0.52 * width), round(0.3 * height) - 10, 60,
+        self.sound_box = TextBox(screen, round(0.52 * width) + 200, round(0.3 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость звуков
-        self.sound_slider = Slider(screen, round(0.2 * width), round(0.3 * height), round(width * 0.3), 30,
+        self.sound_slider = Slider(screen, round(0.2 * width) + 200, round(0.3 * height), round(width * 0.3), 30,
                                    colour='white', handleColour=pygame.Color('red'),
                                    max=1, min=0, step=0.01, initial=1)  # ползунок громкости звуков
-        self.combobox1 = Dropdown(screen, round(0.2 * width), round(0.4 * height), round(width * 0.3),
+        self.combobox1 = Dropdown(screen, round(0.2 * width) + 200, round(0.4 * height), round(width * 0.3),
                                   50, name='Разрешение экрана',  # настройка расширения экрана
                                   choices=['Полный экран', '1280 x 720', '1920 x 1080',
                                            '2048 x 1152', '3840 x 2160'],
@@ -117,7 +117,7 @@ class Options(Window):
                                   values=[(full_width, full_height),
                                           (1280, 720), (1920, 1080), (2048, 1152), (3840, 2160)],
                                   direction='down', textHAlign='centre')
-        self.combobox2 = Dropdown(screen, round(0.2 * width), round(0.5 * height), round(width * 0.3),
+        self.combobox2 = Dropdown(screen, round(0.2 * width) + 200, round(0.5 * height), round(width * 0.3),
                                   50, name='Максимальный FPS',  # настройка расширения экрана
                                   choices=['120', '100', '80', '60', '40'],
                                   borderRadius=3, colour='grey', fontSize=50,
