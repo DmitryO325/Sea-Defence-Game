@@ -144,6 +144,7 @@ class Name(Menu):  # переход к окну "Имя"
         super().__init__()
         self.Win = None
         self.is_change = False
+        self.width_value = 0
 
         self.draw_buttons()
         self.show()
@@ -157,6 +158,9 @@ class Name(Menu):  # переход к окну "Имя"
                     self.running = False
 
             if self.is_change:
+                if self.is_change == 'change':
+                    self.width_value = 0.6
+
                 self.draw_field()
                 self.is_change = False
 
@@ -201,15 +205,31 @@ class Name(Menu):  # переход к окну "Имя"
             self.screen,
             round(self.width * 0.7),
             round(self.height * 0.1),
-            round(self.width * 0.1),
+            round(self.width * 0.2),
             round(self.height * 0.05),
-            colour='yellow', text='Новое имя', textColour='red',
+            colour='yellow', text='Создать профиль', textColour='red',
             fontSize=32, hoverColour='grey', pressedColour='darkgrey',
-            onRelease=self.show_change
+            onRelease=self.show_new_name
         )
 
-    def show_change(self):
-        self.is_change = True
+        Button(  # кнопка для редактирования профиля
+            self.screen,
+            round(self.width * 0.1),
+            round(self.height * 0.1),
+            round(self.width * 0.2),
+            round(self.height * 0.05),
+            colour='yellow', text='Редактировать профиль', textColour='red',
+            fontSize=32, hoverColour='grey', pressedColour='darkgrey',
+            onRelease=self.show_changed_name
+        )
+
+    def show_new_name(self):
+        self.is_change = 'new'
+        self.delete_name_field()
+
+    def show_changed_name(self):
+        self.is_change = 'change'
+        self.delete_name_field()
 
     def to_menu(self):
         self.switch()
@@ -228,19 +248,19 @@ class Name(Menu):  # переход к окну "Имя"
         self.to_menu()
 
     def draw_field(self):
-        Button(  # кнопка для создания нового профиля
+        Button(
             self.screen,
-            round(self.width * 0.7),
+            round(self.width * (0.7 - self.width_value)),
             round(self.height * 0.1),
-            round(self.width * 0.1),
+            round(self.width * 0.2),
             round(self.height * 0.05),
-            colour='yellow', text='Введите имя', textColour='red',
-            fontSize=32, hoverColour='grey', pressedColour='darkgrey'
+            colour='yellow', text='Введите имя' if self.is_change == 'new' else 'Измените имя',
+            textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
         )
 
         self.name_box = TextBox(
             self.screen,
-            round(self.width * 0.7),
+            round(self.width * (0.7 - self.width_value)),
             round(self.height * 0.18),
             round(self.width * 0.2),
             round(self.height * 0.05),
@@ -249,38 +269,47 @@ class Name(Menu):  # переход к окну "Имя"
 
         Button(
             self.screen,
-            round(self.width * 0.7),
+            round(self.width * (0.7 - self.width_value)),
             round(self.height * 0.26),
             round(self.width * 0.2),
             round(self.height * 0.05),
-            colour='blue', text='Создать', textColour='yellow',
+            colour='blue', text='Создать' if self.is_change == 'new' else 'Изменить', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.new_name
+            onRelease=self.new_name if self.is_change == 'new' else self.change_name
         )
 
         Button(
             self.screen,
-            round(self.width * 0.7),
+            round(self.width * (0.7 - self.width_value)),
             round(self.height * 0.34),
             round(self.width * 0.2),
             round(self.height * 0.05),
             colour='blue', text='Отмена', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.delete_new_name_field
+            onRelease=self.delete_name_field
         )
 
-    def delete_new_name_field(self):
+        self.width_value = 0
+
+    def delete_name_field(self):
         delete_widgets()
         self.draw_buttons()
+
+    def update_data(self):
+        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names = tuple(map(lambda x: x[1], self.names_data))
 
     def new_name(self):
         self.cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
         self.connection.commit()
+        self.update_data()
+        self.delete_name_field()
 
-        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
-        self.names = tuple(map(lambda x: x[1], self.names_data))
-
-        self.delete_new_name_field()
+    def change_name(self):
+        self.cursor.execute(f'''UPDATE data SET name = '{self.name_box.getText()}' WHERE id = {self.name_id}''')
+        self.connection.commit()
+        self.update_data()
+        self.delete_name_field()
 
 
 if __name__ == '__main__':
