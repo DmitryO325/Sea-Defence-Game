@@ -380,21 +380,36 @@ class Options(Window):
         self.Win = MainWindow()
 
 
-class Ship:
+class Ship(pygame.sprite.Sprite):
     def __init__(self):
+        super().__init__()
         self.armor = 0
         self.speed = 0
 
-    def torpedo_shot(self):
+    def torpedo_shot(self, x, y):
         pass
 
 
 class Player(Ship):
-    def __init__(self):
+    def __init__(self, group):
         super().__init__()
+        self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.1, height * 0.1))
+        self.rect.x, self.rect.y = round(0.45 * width), round(0.9 * height)
+        self.left = False
+        self.right = False
 
     def gun_shot(self):
         pass
+
+    def update(self, *args):
+        if self.right:
+            self.rect.x += 10
+            if self.rect.x + self.rect.w > width:
+                self.rect.x = width - self.rect.w
+        if self.left:
+            self.rect.x -= 10
+            if self.rect.x < 0:
+                self.rect.x = 0
 
 
 class Enemy(Ship):
@@ -402,12 +417,12 @@ class Enemy(Ship):
         super().__init__()
 
 
-
 class Torpedo(pygame.sprite.Sprite):
     image = load_image('torpedo.png')
+
     # клaсс пробоины нужен? (совместить попадание торпеды и пушки)
-    def __init__(self, x: int, y: int, point_coords: tuple):
-        super().__init__(torpedo_group)
+    def __init__(self, x: int, y: int, point_coords: tuple, group):
+        super().__init__(group)
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coords
@@ -423,14 +438,34 @@ class Torpedo(pygame.sprite.Sprite):
 class Battlefield:
     def __init__(self, difficulty=None, conditions=None):
         self.rect = load_image('')
+        self.player_group = pygame.sprite.Group()
+        self.torpedo_group = pygame.sprite.Group()
+        self.enemy_group = pygame.sprite.Group()
+        self.shoal_group = pygame.sprite.Group()
+        self.player = Player(self.player_group)
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_LEFT:
+                        self.player.left = True
+                    if event.key == pygame.K_RIGHT:
+                        self.player.right = True
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_LEFT:
+                        self.player.left = False
+                    if event.key == pygame.K_RIGHT:
+                        self.player.right = False
 
     def spawn_shoal(self):
         pass
 
 
 class Shoal(pygame.sprite.Sprite):
-    def __init__(self, coords: tuple, size: tuple):
-        super().__init__()
+    def __init__(self, coords: tuple, size: tuple, group):
+        super().__init__(group)
         self.size = self.width, self.height = size
         self.coords = self.x, self.y = coords
 
@@ -445,7 +480,6 @@ if __name__ == '__main__':
     pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     clock.tick(FPS)
-    torpedo_group = pygame.sprite.Group()
     MainWindow()
     # pygame.mixer.music.set_volume(0.5)
     # pygame.mixer.music.stop()
