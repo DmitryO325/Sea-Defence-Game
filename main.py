@@ -5,10 +5,23 @@ from pygame_widgets.textbox import TextBox
 from pygame_widgets.dropdown import Dropdown
 import pygame_widgets
 import sqlite3
+import sys
+import os
+import math
 
 
 def delete_widgets():
     pygame_widgets.WidgetHandler._widgets = []
+
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('Images', name)
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    return image
 
 
 class Window:
@@ -367,6 +380,61 @@ class Options(Window):
         self.Win = MainWindow()
 
 
+class Ship:
+    def __init__(self):
+        self.armor = 0
+        self.speed = 0
+
+    def torpedo_shot(self):
+        pass
+
+
+class Player(Ship):
+    def __init__(self):
+        super().__init__()
+
+    def gun_shot(self):
+        pass
+
+
+class Enemy(Ship):
+    def __init__(self, ship_type=None):
+        super().__init__()
+
+
+
+class Torpedo(pygame.sprite.Sprite):
+    image = load_image('torpedo.png')
+    # клaсс пробоины нужен? (совместить попадание торпеды и пушки)
+    def __init__(self, x: int, y: int, point_coords: tuple):
+        super().__init__(torpedo_group)
+        self.x = x
+        self.y = y
+        self.x1, self.y1 = point_coords
+        self.rotate()
+        self.image = Torpedo.image
+        self.rect = self.image.get_rect()
+
+    def rotate(self):
+        angle = math.atan((self.y1 - self.y) / (self.x1 - self.x))
+        print(angle)
+
+
+class Battlefield:
+    def __init__(self, difficulty=None, conditions=None):
+        self.rect = load_image('')
+
+    def spawn_shoal(self):
+        pass
+
+
+class Shoal(pygame.sprite.Sprite):
+    def __init__(self, coords: tuple, size: tuple):
+        super().__init__()
+        self.size = self.width, self.height = size
+        self.coords = self.x, self.y = coords
+
+
 if __name__ == '__main__':
     pygame.init()
     FPS = 60
@@ -377,6 +445,7 @@ if __name__ == '__main__':
     pygame.mixer.music.play(-1)
     clock = pygame.time.Clock()
     clock.tick(FPS)
+    torpedo_group = pygame.sprite.Group()
     MainWindow()
     # pygame.mixer.music.set_volume(0.5)
     # pygame.mixer.music.stop()
