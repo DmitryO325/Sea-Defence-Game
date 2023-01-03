@@ -139,6 +139,14 @@ class Options(Menu):
     def __init__(self):
         super().__init__()
         self.Win = None
+
+        with open('preferences.txt') as file:
+            self.file_data = file.readlines()
+            self.new_width, self.new_height = map(int, self.file_data[1][self.file_data[1].find('=') + 2:].split('x'))
+            self.fps = int(self.file_data[2][self.file_data[2].find('=') + 2:])
+            self.music_value = int(self.file_data[3][self.file_data[3].find('=') + 2:])
+            self.sound_value = int(self.file_data[4][self.file_data[4].find('=') + 2:])
+
         self.music_box = TextBox(  # отображает громкость музыки
             self.screen,
             round(0.52 * self.width) + 200,
@@ -181,7 +189,7 @@ class Options(Menu):
             round(0.4 * self.height),
             round(0.3 * self.width),
             50,
-            name='Разрешение экрана',  # настройка расширения экрана
+            name='Разрешение экрана',  # настройка разрешения экрана
             choices=['Полный экран', '1280 x 720', '1920 x 1080',
                      '2048 x 1152', '3840 x 2160'],
             borderRadius=3, colour='grey', fontSize=50,
@@ -195,7 +203,7 @@ class Options(Menu):
             round(0.2 * self.width) + 200,
             round(0.5 * self.height),
             round(0.3 * self.width),
-            50, name='Максимальный FPS',  # настройка расширения экрана
+            50, name='Максимальный FPS',  # настройка частоты кадров
             choices=['120', '100', '80', '60', '40'],
             borderRadius=3, colour='grey', fontSize=50,
             direction='down', textHAlign='centre'
@@ -203,15 +211,18 @@ class Options(Menu):
 
         self.draw_buttons()
 
-        header_font = pygame.font.Font(None, 150)
-        header_text = header_font.render('Настройки', True, (255, 0, 0))
+        self.header_font = pygame.font.Font(None, 150)
+        self.header_text = self.header_font.render('Настройки', True, (255, 0, 0))
 
-        functions_texts = ['Музыка', 'Звуковые эффекты', 'Разрешение экрана', 'Частота кадров']
-        functions_font = pygame.font.Font(None, 60)
+        self.functions_texts = ['Музыка', 'Звуковые эффекты', 'Разрешение экрана', 'Частота кадров']
+        self.functions_font = pygame.font.Font(None, 60)
 
         self.picture = pygame.image.load('Главное меню.png')
         self.picture = pygame.transform.scale(self.picture, (self.width, self.height))
 
+        self.show()
+
+    def show(self):
         while self.running:
             events = pygame.event.get()
 
@@ -220,28 +231,30 @@ class Options(Menu):
                     self.running = False
 
             self.update_sliders()
+
             if self.combobox1.getSelected():
                 self.new_width, self.new_height = self.combobox1.getSelected()
 
             if self.combobox2.getSelected():
-                self.clock.tick(int(self.combobox2.getSelected()))
+                self.fps = int(self.combobox2.getSelected())
 
             self.screen.blit(self.picture, (0, 0))
-            self.screen.blit(header_text, (round(0.4 * self.width), round(0.05 * self.height)))
+            self.screen.blit(self.header_text, (round(0.4 * self.width), round(0.05 * self.height)))
 
-            for num in range(len(functions_texts)):
-                function_text = functions_font.render(functions_texts[num], True, (255, 0, 0))
+            for num in range(len(self.functions_texts)):
+                function_text = self.functions_font.render(self.functions_texts[num], True, (255, 0, 0))
                 self.screen.blit(function_text, (round(0.01 * self.width), round((0.2 + num / 10) * self.height)))
 
             pygame_widgets.update(events)
             pygame.display.flip()
 
     def update_sliders(self):
-        current_music_slider_value = self.music_slider.getValue()
-        self.music_box.setText(str(round(100 * current_music_slider_value)))
-        pygame.mixer.music.set_volume(current_music_slider_value)
-        current_sound_slider_value = self.sound_slider.getValue()
-        self.sound_box.setText(str(round(100 * current_sound_slider_value)))
+        self.music_value = round(self.music_slider.getValue() * 100)
+        self.music_box.setText(str(self.music_value))
+        pygame.mixer.music.set_volume(self.music_value)
+
+        self.sound_value = round(self.sound_slider.getValue() * 100)
+        self.sound_box.setText(str(self.sound_value))
 
     def draw_buttons(self):
         Button(
@@ -250,21 +263,23 @@ class Options(Menu):
             round(self.height * (0.7 + 1 * 0.15)),
             round(self.width * 0.2),
             round(self.height * 0.1),
-            colour='blue', text='В главное меню', textColour='yellow',
+            colour='blue', text='ОК', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
             onRelease=self.to_menu
         )
 
     def to_menu(self):
+        with open('preferences.txt', 'r+') as file:
+            self.file_data[1] = f'resolution = {self.new_width}x{self.new_height}\n'
+            self.file_data[2] = f'FPS = {self.fps}\n'
+            self.file_data[3] = f'music_volume = {self.music_value}\n'
+            self.file_data[4] = f'sound_volume = {self.sound_value}\n'
+
+            file.writelines(self.file_data)
+
+            delete_widgets()
+
         self.switch()
-
-        try:
-            if self.new_width != self.width:
-                self.resize(self.new_width, self.new_height)
-
-        except AttributeError:
-            pass
-
         self.Win = MainWindow()
 
 
@@ -282,6 +297,8 @@ class Name(Menu):  # переход к окну "Имя"
         self.Win = None
         self.is_change = False
         self.width_value = 0
+        self.new_name_status = 'repeat'
+        self.create_name = False
 
         self.draw_buttons()
         self.show()
@@ -375,7 +392,12 @@ class Name(Menu):  # переход к окну "Имя"
     def change_data(self):
         with open('preferences.txt', 'r+') as file:
             try:
-                self.file_data[0] = f'name = {self.names.index(self.names_combobox.getSelected()) + 1}'
+                if self.create_name:
+                    self.file_data[0] = f'name = {self.name_id + 1}\n'
+                    self.create_name = False
+
+                else:
+                    self.file_data[0] = f'name = {self.names.index(self.names_combobox.getSelected()) + 1}\n'
 
             except ValueError:
                 pass
@@ -428,6 +450,19 @@ class Name(Menu):  # переход к окну "Имя"
 
         self.width_value = 0
 
+    def name_is_occupied(self):
+        Button(
+            self.screen,
+            round(self.width * 0.7),
+            round(self.height * 0.1),
+            round(self.width * 0.2),
+            round(self.height * 0.05),
+            colour='yellow', text='Это имя занято!' if self.new_name_status == 'repeat' else 'Пустое имя!',
+            textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
+        )
+
+        self.new_name_status = 'repeat'
+
     def delete_name_field(self):
         delete_widgets()
         self.draw_buttons()
@@ -437,10 +472,24 @@ class Name(Menu):  # переход к окну "Имя"
         self.names = tuple(map(lambda x: x[1], self.names_data))
 
     def new_name(self):
-        self.cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
-        self.connection.commit()
-        self.update_data()
-        self.delete_name_field()
+        try:
+            if not self.name_box.getText():
+                self.new_name_status = 'empty'
+                raise sqlite3.IntegrityError
+
+            self.cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
+            self.connection.commit()
+            self.update_data()
+            self.delete_name_field()
+
+            self.name_id = len(self.names) - 1
+            self.selected_name = self.name_box.getText()
+
+            self.create_name = True
+            self.change_data()
+
+        except sqlite3.IntegrityError:
+            self.name_is_occupied()
 
     def change_name(self):
         self.cursor.execute(f'''UPDATE data SET name = '{self.name_box.getText()}' WHERE id = {self.name_id}''')
@@ -452,6 +501,6 @@ class Name(Menu):  # переход к окну "Имя"
 if __name__ == '__main__':
     pygame.init()
     size = 1600, 900
-    pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play()
+    # pygame.mixer.music.load('Audio/Background.mp3')
+    # pygame.mixer.music.play()
     window = MainWindow()
