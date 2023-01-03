@@ -14,13 +14,20 @@ def delete_widgets():
 
 class Window:
     def __init__(self):
-        self.max_resolution = pygame.display.Info().current_w, pygame.display.Info().current_h
-        self.size = self.width, self.height = size
-        self.screen = pygame.display.set_mode(self.size)
+        with open('preferences.txt') as file:
+            self.file_data = file.readlines()
+            self.size = self.width, self.height = \
+                tuple(map(int, self.file_data[1][self.file_data[1].find('=') + 2:].split('x')))
+            self.screen = pygame.display.set_mode(self.size)
 
-        self.FPS = 75
-        self.clock = pygame.time.Clock()
-        self.clock.tick(self.FPS)
+            self.max_resolution = pygame.display.Info().current_w, pygame.display.Info().current_h
+
+            self.FPS = int(self.file_data[2][self.file_data[2].find('=') + 2:])
+            self.clock = pygame.time.Clock()
+            self.clock.tick(self.FPS)
+
+            self.music_volume = int(file_data[3][file_data[3].find('=') + 2:])
+            pygame.mixer.music.set_volume(self.music_volume / 100)
 
         self.running = True
 
@@ -161,7 +168,7 @@ class Options(Menu):
             round(self.width * 0.3),
             30,
             colour='white', handleColour=pygame.Color('red'),
-            max=1, min=0, step=0.01, initial=1
+            max=100, min=0, step=1, initial=self.music_volume
         )
 
         self.sound_box = TextBox(  # отображает громкость звуков
@@ -180,7 +187,7 @@ class Options(Menu):
             round(0.3 * self.width),
             30,
             colour='white', handleColour=pygame.Color('red'),
-            max=1, min=0, step=0.01, initial=1
+            max=100, min=0, step=1, initial=self.sound_value
         )
 
         self.combobox1 = Dropdown(
@@ -249,11 +256,11 @@ class Options(Menu):
             pygame.display.flip()
 
     def update_sliders(self):
-        self.music_value = round(self.music_slider.getValue() * 100)
+        self.music_value = self.music_slider.getValue()
         self.music_box.setText(str(self.music_value))
         pygame.mixer.music.set_volume(self.music_value)
 
-        self.sound_value = round(self.sound_slider.getValue() * 100)
+        self.sound_value = self.sound_slider.getValue()
         self.sound_box.setText(str(self.sound_value))
 
     def draw_buttons(self):
@@ -499,8 +506,13 @@ class Name(Menu):  # переход к окну "Имя"
 
 
 if __name__ == '__main__':
+    with open('preferences.txt') as text_file:
+        file_data = text_file.readlines()
+        music_volume = int(file_data[3][file_data[3].find('=') + 2:])
+
     pygame.init()
-    size = 1600, 900
-    # pygame.mixer.music.load('Audio/Background.mp3')
-    # pygame.mixer.music.play()
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play()
+    pygame.mixer.music.set_volume(music_volume / 100)
+
     window = MainWindow()

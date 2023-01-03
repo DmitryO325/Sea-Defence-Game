@@ -1,8 +1,13 @@
 name = 1
-resolution = 1280x720
-FPS = 75
-music_volume = 100
+resolution = 1920x1080
+FPS = 100
+music_volume = 71
 sound_volume = 100
+
+
+
+
+
 
 
 
