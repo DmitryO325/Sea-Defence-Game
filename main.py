@@ -90,8 +90,8 @@ class MainWindow(Menu):
                 round(self.height * (0.06 + number_of_button * 0.13 + 0.03)),
                 round(self.width * 0.6),
                 round(self.height * 0.1),
-                colour='yellow', text=self.button_titles[number_of_button], textColour='red',
-                fontSize=60, radius=10, hoverColour='cyan', pressedColour='blue',
+                colour='blue', text=self.button_titles[number_of_button], textColour='yellow',
+                fontSize=60, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
                 onRelease=self.button_functions[number_of_button]
             )
 
@@ -100,7 +100,7 @@ class MainWindow(Menu):
                round(self.height * 0.03),
                round(self.width * 0.1),
                round(self.height * 0.05),
-               colour='green', text=self.selected_name, fontSize=32,
+               colour='lightblue', text=self.selected_name, fontSize=32,
                onRelease=self.button_functions[0]
                )
 
