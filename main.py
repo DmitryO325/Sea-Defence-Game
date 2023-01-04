@@ -26,7 +26,7 @@ class Window:
             self.clock = pygame.time.Clock()
             self.clock.tick(self.FPS)
 
-            self.music_volume = int(file_data[3][file_data[3].find('=') + 2:])
+            self.music_volume = int(self.file_data[3][self.file_data[3].find('=') + 2:])
             pygame.mixer.music.set_volume(self.music_volume / 100)
 
         self.running = True
@@ -258,7 +258,9 @@ class Options(Menu):
     def update_sliders(self):
         self.music_value = self.music_slider.getValue()
         self.music_box.setText(str(self.music_value))
-        pygame.mixer.music.set_volume(self.music_value)
+        pygame.mixer.music.set_volume(self.music_value / 100)
+
+
 
         self.sound_value = self.sound_slider.getValue()
         self.sound_box.setText(str(self.sound_value))
@@ -512,7 +514,7 @@ if __name__ == '__main__':
 
     pygame.init()
     pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play()
+    pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(music_volume / 100)
 
     window = MainWindow()
