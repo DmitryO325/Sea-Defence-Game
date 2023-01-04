@@ -20,20 +20,21 @@ def load_image(name, colorkey=None):
 
 
 class Ship(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, group):
+        super().__init__(group)
         self.armor = 0
         self.speed = 0
 
-    def torpedo_shot(self, x, y):
-        pass
+    def torpedo_shot(self, coords, group):
+        Torpedo(round(self.rect.x + 0.5 * self.rect.w), round(self.rect.y), coords, group)
 
 
 class Player(Ship):
     def __init__(self, group):
-        super().__init__()
-        self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.1, height * 0.1))
-        self.rect.x, self.rect.y = round(0.45 * width), round(0.9 * height)
+        super().__init__(group)
+        self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.3, height * 0.3))
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = round(0.35 * width), round(0.72 * height)
         self.left = False
         self.right = False
 
@@ -42,41 +43,46 @@ class Player(Ship):
 
     def update(self, *args):
         if self.right:
-            self.rect.x += 10
+            self.rect.x += 4
             if self.rect.x + self.rect.w > width:
                 self.rect.x = width - self.rect.w
         if self.left:
-            self.rect.x -= 10
+            self.rect.x -= 4
             if self.rect.x < 0:
                 self.rect.x = 0
 
 
 class Enemy(Ship):
-    def __init__(self, ship_type=None):
-        super().__init__()
+    def __init__(self, group, ship_type=None):
+        super().__init__(group)
 
 
 class Torpedo(pygame.sprite.Sprite):
-    image = load_image('torpedo.png')
-
-    # клaсс пробоины нужен? (совместить попадание торпеды и пушки)
     def __init__(self, x: int, y: int, point_coords: tuple, group):
         super().__init__(group)
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coords
-        self.rotate()
-        self.image = Torpedo.image
+        self.image = pygame.transform.scale(load_image('torpedo.png'), (round(width * 0.03), round(height * 0.1)))
         self.rect = self.image.get_rect()
+        self.rotate()
+        self.rect.x = self.x
+        self.rect.y = self.y
 
     def rotate(self):
-        angle = math.atan((self.y1 - self.y) / (self.x1 - self.x))
-        print(angle)
+        angle = round(math.degrees(math.atan((self.y - self.y1) / (self.x1 - self.x))))
+        if angle < 0:
+            self.image = pygame.transform.rotate(self.image, abs(angle + 90))
+        else:
+            self.image = pygame.transform.rotate(self.image, angle + 270)
+
+    def move(self):
+        pass
 
 
 class Battlefield:
     def __init__(self, difficulty=None, conditions=None):
-        self.rect = load_image('img.png')
+        self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())
         self.player_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()
         self.enemy_group = pygame.sprite.Group()
@@ -97,6 +103,15 @@ class Battlefield:
                         self.player.left = False
                     if event.key == pygame.K_RIGHT:
                         self.player.right = False
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 3:
+                        self.player.torpedo_shot(event.pos, self.torpedo_group)
+            pygame.display.flip()
+            screen.blit(self.bg, (0, 0))
+            self.player_group.update()
+            self.player_group.draw(screen)
+            self.torpedo_group.update()
+            self.torpedo_group.draw(screen)
 
     def spawn_shoal(self):
         pass
@@ -114,4 +129,8 @@ if __name__ == '__main__':
     FPS = 60
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
     size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
+    print(width, height)
+    screen = pygame.display.set_mode(size)
+    clock = pygame.time.Clock()
+    clock.tick(FPS)
     Battlefield()
