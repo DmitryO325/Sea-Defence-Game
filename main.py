@@ -409,7 +409,7 @@ class Name(Menu):  # переход к окну "Имя"
             round(self.height * 0.05),
             colour='red', text='Удалить профиль', textColour='yellow',
             fontSize=32, hoverColour='grey', pressedColour='darkgrey',
-            onRelease=self.delete_name
+            onRelease=self.show_deleted_name
         )
 
     def show_new_name(self):
@@ -418,6 +418,10 @@ class Name(Menu):  # переход к окну "Имя"
 
     def show_changed_name(self):
         self.is_change = 'change'
+        self.delete_name_field()
+
+    def show_deleted_name(self):
+        self.is_change = 'delete'
         self.delete_name_field()
 
     def to_menu(self):
@@ -446,48 +450,72 @@ class Name(Menu):  # переход к окну "Имя"
         self.to_menu()
 
     def draw_field(self):
-        Button(
-            self.screen,
-            round(self.width * (0.7 - self.width_value)),
-            round(self.height * 0.1),
-            round(self.width * 0.2),
-            round(self.height * 0.05),
-            colour='yellow', text='Введите имя' if self.is_change == 'new' else 'Измените имя',
-            textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
-        )
+        if self.is_change in {'new', 'change'}:
+            Button(
+                self.screen,
+                round(self.width * (0.7 - self.width_value)),
+                round(self.height * 0.1),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                colour='yellow', text='Введите имя' if self.is_change == 'new' else 'Измените имя',
+                textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
+            )
 
-        self.name_box = TextBox(
-            self.screen,
-            round(self.width * (0.7 - self.width_value)),
-            round(self.height * 0.18),
-            round(self.width * 0.2),
-            round(self.height * 0.05),
-            fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
-        )
+            self.name_box = TextBox(
+                self.screen,
+                round(self.width * (0.7 - self.width_value)),
+                round(self.height * 0.18),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
+            )
 
-        Button(
-            self.screen,
-            round(self.width * (0.7 - self.width_value)),
-            round(self.height * 0.26),
-            round(self.width * 0.2),
-            round(self.height * 0.05),
-            colour='blue', text='Создать' if self.is_change == 'new' else 'Изменить', textColour='yellow',
-            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.new_name if self.is_change == 'new' else self.change_name
-        )
+            Button(
+                self.screen,
+                round(self.width * (0.7 - self.width_value)),
+                round(self.height * 0.26),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                colour='blue', text='Создать' if self.is_change == 'new' else 'Изменить', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.new_name if self.is_change == 'new' else self.change_name
+            )
 
-        Button(
-            self.screen,
-            round(self.width * (0.7 - self.width_value)),
-            round(self.height * 0.34),
-            round(self.width * 0.2),
-            round(self.height * 0.05),
-            colour='blue', text='Отмена', textColour='yellow',
-            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.delete_name_field
-        )
+            Button(
+                self.screen,
+                round(self.width * (0.7 - self.width_value)),
+                round(self.height * 0.34),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                colour='blue', text='Отмена', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name_field
+            )
 
-        self.width_value = 0
+            self.width_value = 0
+
+        else:
+            Button(
+                self.screen,
+                round(self.width * 0.1),
+                round(self.height * 0.83),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                colour='blue', text='Удалить', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name
+            )
+
+            Button(
+                self.screen,
+                round(self.width * 0.1),
+                round(self.height * 0.9),
+                round(self.width * 0.2),
+                round(self.height * 0.05),
+                colour='blue', text='Отмена', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name_field
+            )
 
     def name_is_occupied(self):
         Button(
@@ -540,6 +568,7 @@ class Name(Menu):  # переход к окну "Имя"
         self.change_data()
 
     def delete_name(self):
+        Button
         self.cursor.execute(f'''DELETE FROM data WHERE id = {self.name_id}''')
         self.connection.commit()
         self.update_data()
