@@ -1,4 +1,7 @@
+import math
+import os
 import sqlite3
+import sys
 
 import pygame
 from pygame_widgets.button import Button
@@ -10,6 +13,16 @@ import pygame_widgets
 
 def delete_widgets():
     pygame_widgets.WidgetHandler._widgets = []
+
+
+def load_image(name, colorkey=None):
+    fullname = os.path.join('Images', name)
+    # если файл не существует, то выходим
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    return image
 
 
 class Window:
@@ -76,6 +89,9 @@ class MainWindow(Menu):
         super().__init__()
         self.Win = None
 
+        self.font = pygame.font.Font(None, 150)
+        self.text = self.font.render('Морская оборона', True, (255, 0, 0))
+
         self.button_titles = ('Имя', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
         self.button_functions = (self.to_name, self.to_survival, self.to_level_mode, self.to_shipyard,
                                  self.to_top_players, self.to_options, self.to_exit)
@@ -106,6 +122,7 @@ class MainWindow(Menu):
 
     def show(self):
         self.position_buttons()
+        self.screen.blit(self.picture, (0, 0))
 
         while self.running:
             events = pygame.event.get()
@@ -114,7 +131,7 @@ class MainWindow(Menu):
                 if event.type == pygame.QUIT:
                     self.running = False
 
-            self.screen.blit(self.picture, (0, 0))
+            self.screen.blit(self.text, (round(0.5 * self.width) - 450, round(0.1 * self.height)))
             pygame_widgets.update(events)
             pygame.display.flip()
 
@@ -260,8 +277,6 @@ class Options(Menu):
         self.music_box.setText(str(self.music_value))
         pygame.mixer.music.set_volume(self.music_value / 100)
 
-
-
         self.sound_value = self.sound_slider.getValue()
         self.sound_box.setText(str(self.sound_value))
 
@@ -307,7 +322,7 @@ class Name(Menu):  # переход к окну "Имя"
         self.is_change = False
         self.width_value = 0
         self.new_name_status = 'repeat'
-        self.create_name = False
+        self.create_name = self.edit_name = False
 
         self.draw_buttons()
         self.show()
@@ -386,6 +401,17 @@ class Name(Menu):  # переход к окну "Имя"
             onRelease=self.show_changed_name
         )
 
+        Button(  # кнопка для удаления профиля
+            self.screen,
+            round(self.width * 0.35),
+            round(self.height * 0.03),
+            round(self.width * 0.3),
+            round(self.height * 0.05),
+            colour='red', text='Удалить профиль', textColour='yellow',
+            fontSize=32, hoverColour='grey', pressedColour='darkgrey',
+            onRelease=self.delete_name
+        )
+
     def show_new_name(self):
         self.is_change = 'new'
         self.delete_name_field()
@@ -404,6 +430,10 @@ class Name(Menu):  # переход к окну "Имя"
                 if self.create_name:
                     self.file_data[0] = f'name = {self.name_id + 1}\n'
                     self.create_name = False
+
+                elif self.edit_name:
+                    self.file_data[0] = f'name = {self.name_id}\n'
+                    self.edit_name = False
 
                 else:
                     self.file_data[0] = f'name = {self.names.index(self.names_combobox.getSelected()) + 1}\n'
@@ -505,6 +535,75 @@ class Name(Menu):  # переход к окну "Имя"
         self.connection.commit()
         self.update_data()
         self.delete_name_field()
+
+        self.edit_name = True
+        self.change_data()
+
+    def delete_name(self):
+        self.cursor.execute(f'''DELETE FROM data WHERE id = {self.name_id}''')
+        self.connection.commit()
+        self.update_data()
+
+        for name_id in range(1, len(self.names_data) + 1):
+            self.cursor.execute(f'''UPDATE data SET id = {name_id} 
+                               WHERE id = {self.names_data[name_id - 1][0]}''')
+
+            self.connection.commit()
+
+
+class Ship:
+    def __init__(self):
+        self.armor = 0
+        self.speed = 0
+
+    def torpedo_shot(self):
+        pass
+
+
+class Player(Ship):
+    def __init__(self):
+        super().__init__()
+
+    def gun_shot(self):
+        pass
+
+
+class Enemy(Ship):
+    def __init__(self, ship_type=None):
+        super().__init__()
+
+
+class Torpedo(pygame.sprite.Sprite):
+    # image = load_image('torpedo.png')
+    # класс пробоины нужен? (совместить попадание торпеды и пушки)
+    def __init__(self, x: int, y: int, point_coords: tuple):
+        super().__init__(torpedo_group)
+        self.x = x
+        self.y = y
+        self.x1, self.y1 = point_coords
+        self.rotate()
+        self.image = Torpedo.image
+        self.rect = self.image.get_rect()
+
+    def rotate(self):
+        angle = math.atan((self.y1 - self.y) / (self.x1 - self.x))
+        print(angle)
+
+
+class Battlefield:
+    def __init__(self, difficulty=None, conditions=None):
+        self.rect = load_image('')
+        self.torpedo_group = pygame.sprite.Group()
+
+    def spawn_shoal(self):
+        pass
+
+
+class Shoal(pygame.sprite.Sprite):
+    def __init__(self, coords: tuple, size: tuple):
+        super().__init__()
+        self.size = self.width, self.height = size
+        self.coords = self.x, self.y = coords
 
 
 if __name__ == '__main__':
