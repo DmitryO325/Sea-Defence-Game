@@ -66,8 +66,9 @@ class Player(Ship):  # класс игрока
 
 
 class Enemy(Ship):  # класс врага
-    params = {'Канонерка': (50, 2.0), 'Эсминец': (100, 1.5),
-              'Линкор': (200, 1.0), 'Крейсер': (300, 0.5)}
+    params = {'Канонерка': (50, 4), 'Эсминец': (100, 3),
+              'Линкор': (200, 2), 'Крейсер': (300, 1)}
+
     # каждому виду корабля соответствуют свои характеристики: armor, speed, направление (вправо плывет или влево)
 
     def __init__(self, group, ship_type):
@@ -131,7 +132,8 @@ class Torpedo(pygame.sprite.Sprite):
         self.x1, self.y1 = point_coords
         self.delta_y = -0.002 * height
         self.delta_x = (self.x1 - self.x) / (self.y - self.y1) * 0.002 * height
-        self.image = pygame.transform.scale(load_image('torpedo.png'), (round(width * 0.015), round(height * 0.12)))
+        self.image = pygame.transform.scale(load_image('torpedo.png').convert_alpha(),
+                                            (round(width * 0.015), round(height * 0.12)))
         self.rect = self.image.get_rect()
         self.rotate()
         self.rect.x = self.x
@@ -168,9 +170,9 @@ class Battlefield:  # игровое поле
         # чем выше сложность, тем выше будет скорость всего происходящего
         # погодные условия потом
         self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
-        self.ship_group = pygame.sprite.Group()
-        self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
-        self.shoal_group = pygame.sprite.Group()
+        self.ship_group = pygame.sprite.Group()  # группа кораблей
+        self.torpedo_group = pygame.sprite.Group()  # группа торпед
+        self.shoal_group = pygame.sprite.Group()  # группа островков
         self.player = Player(self.ship_group)  # игрок
         running = True
 
@@ -211,6 +213,7 @@ class Battlefield:  # игровое поле
                         self.spawn_enemy()  # спавнит мель корабль врага
 
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+                    pygame.time.set_timer(pygame.USEREVENT, 1)
 
             pygame.display.flip()
             screen.blit(self.bg, (0, 0))
@@ -234,7 +237,7 @@ class Battlefield:  # игровое поле
 class Shoal(pygame.sprite.Sprite):  # класс мели
     def __init__(self, coords: tuple, size: tuple, group):
         super().__init__(group)
-        self.image = pygame.transform.scale(load_image('shoal.png'), size)
+        self.image = pygame.transform.scale(load_image('shoal.png').convert_alpha(), size)
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = coords
 
@@ -247,7 +250,7 @@ class Shoal(pygame.sprite.Sprite):  # класс мели
         else:
             self.rect.y += height * 0.001  # спуск вниз
 
-            if self.rect.y >= 0.96 * height:  # выход за границу
+            if self.rect.y >= height:  # выход за границу
                 self.kill()
 
 
