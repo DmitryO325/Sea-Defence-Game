@@ -257,8 +257,10 @@ class Shoal(pygame.sprite.Sprite):  # класс мели
 if __name__ == '__main__':
     pygame.init()
     FPS = 100
+
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
     size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
+
     screen = pygame.display.set_mode(size)
     clock = pygame.time.Clock()
     clock.tick(FPS)
