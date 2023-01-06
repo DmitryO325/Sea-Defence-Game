@@ -66,41 +66,61 @@ class Player(Ship):  # класс игрока
 
 
 class Enemy(Ship):  # класс врага
-    params = {'Канонерка': (), 'Эсминец': (),
-              'Линкор': (), 'Крейсер': ()}
+    params = {'Канонерка': (50, 2.0), 'Эсминец': (100, 1.5),
+              'Линкор': (200, 1.0), 'Крейсер': (300, 0.5)}
     # каждому виду корабля соответствуют свои характеристики: armor, speed, направление (вправо плывет или влево)
 
     def __init__(self, group, ship_type):
         super().__init__(group)
         self.info = self.params[ship_type]
+        self.ship_type = ship_type
 
         if ship_type == 'Канонерка':
             self.image = pygame.transform.scale(load_image(random.choice(('Канонерка.png',
                                                                           'Канонерка2.png',
-                                                                          'Канонерка3.png'))), (200, 40))
+                                                                          'Канонерка3.png'))),
+                                                (width * 0.1, height * 0.04))
 
         elif ship_type == 'Эсминец':
             self.image = pygame.transform.scale(load_image(random.choice(('Эсминец.png',
-                                                                          'Эсминец2.png'))), (200, 40))
+                                                                          'Эсминец2.png'))),
+                                                (width * 0.1, height * 0.04))
 
         elif ship_type == 'Линкор':
             self.image = pygame.transform.scale(load_image(random.choice(('Линкор.png',
-                                                                          'Линкор2.png'))), (200, 40))
+                                                                          'Линкор2.png'))),
+                                                (width * 0.1, height * 0.04))
 
         elif ship_type == 'Крейсер':
             self.image = pygame.transform.scale(load_image(random.choice(('Крейсер.png',
-                                                                          'Крейсер2.png'))), (200, 40))
+                                                                          'Крейсер2.png'))),
+                                                (width * 0.1, height * 0.04))
 
         self.rect = self.image.get_rect()
-        self.rect.x = 0
-        self.rect.y = 1080 * 0.25
+        self.direction = random.randint(0, 1)
+
+        if self.direction == 0:
+            self.rect.x = width * -0.1
+
+        else:
+            self.rect.x = width
+            self.image = pygame.transform.flip(self.image, True, False)
+
+        self.rect.y = height * 0.25
 
         # появляется за экраном
         # выпускает торпеду с периодом ок. 3-6 секунд
         # каждому типу соответствует своя картинка (см. Images)
 
     def update(self):  # перемещение корабля
-        pass
+        if self.direction == 0:
+            self.rect.x += self.params[self.ship_type][1]
+
+        else:
+            self.rect.x -= self.params[self.ship_type][1]
+
+        if not width * -0.1 <= self.rect.x <= width * 1.1:
+            self.kill()
 
 
 class Torpedo(pygame.sprite.Sprite):
@@ -223,8 +243,10 @@ class Shoal(pygame.sprite.Sprite):  # класс мели
             player.get_damage(40)
             self.kill()
             print('Получено 40 урона')
+
         else:
             self.rect.y += height * 0.001  # спуск вниз
+
             if self.rect.y >= 0.96 * height:  # выход за границу
                 self.kill()
 
