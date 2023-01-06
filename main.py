@@ -29,7 +29,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
 
     def torpedo_shot(self, coords, group):  # функция запуска торпеды
         if self.rect.x + self.rect.w * 0.5 > coords[0]:
-            Torpedo(round(self.rect.x + 0.1 * self.rect.w), round(0.95 * self.rect.y), coords, group)
+            Torpedo(round(self.rect.x + 0.2 * self.rect.w), round(0.95 * self.rect.y), coords, group)
         else:
             Torpedo(round(self.rect.x + 0.8 * self.rect.w), round(0.95 * self.rect.y), coords, group)
 
@@ -85,9 +85,13 @@ class Torpedo(pygame.sprite.Sprite):
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coords
-        self.delta_y = -0.002 * height
-        self.delta_x = (self.x1 - self.x) / (self.y - self.y1) * 0.002 * height
-        self.image = pygame.transform.scale(load_image('torpedo.png'), (round(width * 0.015), round(height * 0.12)))
+        self.angle = math.degrees(math.atan(abs((self.y1 - self.y) / (self.x - self.x1))))
+        if self.x1 < self.x:
+            self.angle = 180 - self.angle
+        print(self.angle)
+        self.delta_y = -0.001 * height * math.sin(math.radians(self.angle))
+        self.delta_x = 0.001 * height * math.cos(math.radians(self.angle))
+        self.image = pygame.transform.scale(load_image('torpedo.png'), (round(width * 0.01), round(height * 0.12)))
         self.rect = self.image.get_rect()
         self.rotate()
         self.rect.x = self.x
@@ -106,7 +110,7 @@ class Torpedo(pygame.sprite.Sprite):
             if pygame.sprite.collide_mask(self, sprite):
                 sprite.get_damage(80)
         else:
-            if self.y < 0.25 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
+            if self.y < 0.26 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
                 self.kill()
             self.x += self.delta_x
             self.y += self.delta_y
@@ -173,7 +177,9 @@ class Battlefield:  # игровое поле
 class Shoal(pygame.sprite.Sprite):  # класс мели
     def __init__(self, coords: tuple, size: tuple, group):
         super().__init__(group)
-        self.image = pygame.transform.scale(load_image('shoal.png'), size)
+        self.size = size
+        self.coef = 0.05
+        self.image = pygame.transform.scale(load_image('shoal.png'), [self.coef * elem for elem in size])
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = coords
 
@@ -181,9 +187,11 @@ class Shoal(pygame.sprite.Sprite):  # класс мели
         if pygame.sprite.collide_mask(self, player):  # проверка удара
             player.get_damage(40)
             self.kill()
-            print('Получено 40 урона')
         else:
-            self.rect.y += height * 0.001  # спуск вниз
+            self.rect.y += height * 0.001
+            # спуск вниз
+            self.coef += 0.01
+            self.image = pygame.transform.scale(load_image('shoal.png'), [self.coef * elem for elem in size])
             if self.rect.y >= 0.96 * height:  # выход за границу
                 self.kill()
 
