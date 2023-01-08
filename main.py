@@ -225,8 +225,8 @@ class Gun(pygame.sprite.Sprite):
         self.x1, self.y1 = point_coords
 
         try:
-            self.angle = math.ceil(math.degrees
-                                   (math.atan(abs((self.y1 - self.y) / (self.x + round(width * 0.004) - self.x1)))))
+            self.angle = math.floor(math.degrees
+                                    (math.atan(abs((self.y1 - self.y) / (self.x - round(width * 0.025) - self.x1)))))
 
         except ZeroDivisionError:
             self.angle = 90
@@ -278,6 +278,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
         self.ship_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
+        self.ball_group = pygame.sprite.Group()
         self.mine_group = pygame.sprite.Group()
         self.other = pygame.sprite.Group()
         self.player = Player(self.ship_group, self.other)  # игрок
@@ -285,7 +286,6 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.other.add(self.cursor)
         self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.1 * width, 0.04 * height,
                              placeholderText=0, colour='grey', textColour='green', fontSize=36, textHAlign='center')
-
         self.score.disable()
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
@@ -322,7 +322,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
 
                     if event.button == 1:  # ЛКМ - выстрел из пушки
                         if event.pos[1] < height * 0.6:  # но вбок нельзя
-                            self.player.gun_shot(event.pos, self.torpedo_group, self.other)
+                            self.player.gun_shot(event.pos, self.ball_group, self.other)
 
                 if event.type == self.random_event:  # генерация случайного события
                     generated_event = random.choice(['мина' for _ in range(6)] + ['корабль' for _ in range(4)])
@@ -338,9 +338,11 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     screen.blit(self.bg, (0, 0))
                     self.ship_group.update()
                     self.torpedo_group.update(self.ship_group)
+                    self.ball_group.update(self.ship_group)
                     self.mine_group.update(self.player)
                     self.other.update()
                     self.torpedo_group.draw(screen)
+                    self.ball_group.draw(screen)
                     self.mine_group.draw(screen)
                     self.ship_group.draw(screen)
                     self.score.setText(score)
