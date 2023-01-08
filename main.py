@@ -32,6 +32,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
 
     def torpedo_shot(self, coords, group, expl_group):  # функция запуска торпеды
         torpedo.play()
+
         if self.rect.x + self.rect.w * 0.5 > coords[0]:
             Torpedo(round(self.rect.x + 0.1 * self.rect.w), round(0.93 * self.rect.y), coords, group, expl_group)
 
@@ -61,19 +62,30 @@ class Player(Ship):  # класс игрока
                               lambda: self.armor / self.max_armor, completedColour='green', incompletedColour='white')
         self.pb.draw()
 
-    def gun_shot(self):  # функция выстрела из пушки
-        pass
+    def gun_shot(self, coords, group, expl_group):  # функция выстрела из пушки
+        gun.play()
+
+        if self.rect.x + self.rect.w * 0.5 > coords[0]:
+            Gun(round(self.rect.x + 0.1 * self.rect.w), round(0.93 * self.rect.y), coords, group, expl_group)
+
+        else:
+            Gun(round(self.rect.x + 0.9 * self.rect.w), round(0.93 * self.rect.y), coords, group, expl_group)
 
     def update(self, *args):  # изменение местоположения
         if self.right:
             self.rect.x += 4
+
             if self.rect.x + self.rect.w > width:
                 self.rect.x = width - self.rect.w
+
         if self.left:
             self.rect.x -= 4
+
             if self.rect.x < 0:
                 self.rect.x = 0
+
         self.pb.draw()
+
         if self.armor <= 0:
             self.pb.hide()
             self.explode()
@@ -91,6 +103,7 @@ class Enemy(Ship):  # класс врага
         self.ship_type = ship_type
         self.armor = self.info[0]
         self.points = self.info[-1]
+
         if ship_type == 'Канонерка':
             self.image = pygame.transform.scale(load_image(random.choice(('Канонерка.png',
                                                                           'Канонерка2.png',
@@ -121,9 +134,10 @@ class Enemy(Ship):  # класс врага
         else:
             self.rect.x = width
             self.image = pygame.transform.flip(self.image, True, False)
+
         self.max_armor = self.armor
         self.rect.y = height * 0.25
-        self.clearevent = pygame.USEREVENT + 3
+        self.clear_event = pygame.USEREVENT + 3
         self.pb = ProgressBar(screen, self.rect.x, self.rect.y - 0.04 * height, self.rect.w, 0.01 * height,
                               lambda: self.armor / self.max_armor, completedColour='red')
         self.pb.draw()
@@ -134,12 +148,15 @@ class Enemy(Ship):  # класс врага
     def update(self):  # перемещение корабля
         if self.direction == 0:
             self.rect.x += self.params[self.ship_type][1]
+
         else:
             self.rect.x -= self.params[self.ship_type][1]
         self.pb.moveX(self.rect.x - self.pb.getX())
         self.pb.draw()
+
         if not width * -0.1 <= self.rect.x <= width * 1.1:
             self.kill()
+
         if self.armor <= 0:
             global score
             score += self.points
@@ -155,13 +172,17 @@ class Torpedo(pygame.sprite.Sprite):
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coords
+
         try:
             self.angle = math.ceil(math.degrees
                                    (math.atan(abs((self.y1 - self.y) / (self.x + round(width * 0.004) - self.x1)))))
+
         except ZeroDivisionError:
             self.angle = 90
+
         if self.x1 < self.x:
             self.angle = 180 - self.angle
+
         self.delta_y = -0.0025 * height * math.sin(math.radians(self.angle))
         self.delta_x = 0.0025 * height * math.cos(math.radians(self.angle))
         self.image = pygame.transform.scale(load_image('torpedo1.png'), (round(width * 0.01), round(height * 0.12)))
@@ -175,6 +196,7 @@ class Torpedo(pygame.sprite.Sprite):
         if self.x != self.x1:
             if self.angle < 0:
                 self.image = pygame.transform.rotate(self.image, self.angle + 90)
+
             else:
                 self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
@@ -188,6 +210,49 @@ class Torpedo(pygame.sprite.Sprite):
         else:
             if self.y < 0.27 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
                 self.kill()
+
+            self.x += self.delta_x
+            self.y += self.delta_y
+            self.rect.x = self.x
+            self.rect.y = self.y
+
+
+class Gun(pygame.sprite.Sprite):
+    def __init__(self, x: int, y: int, point_coords: tuple, group, expl_group):
+        super().__init__(group)
+        self.x = x
+        self.y = y
+        self.x1, self.y1 = point_coords
+
+        try:
+            self.angle = math.ceil(math.degrees
+                                   (math.atan(abs((self.y1 - self.y) / (self.x + round(width * 0.004) - self.x1)))))
+
+        except ZeroDivisionError:
+            self.angle = 90
+
+        if self.x1 < self.x:
+            self.angle = 180 - self.angle
+
+        self.delta_y = -0.02 * height * math.sin(math.radians(self.angle))
+        self.delta_x = 0.02 * height * math.cos(math.radians(self.angle))
+        self.image = pygame.transform.scale(load_image('Ball.png'), (round(width * 0.006), round(height * 0.01)))
+        self.rect = self.image.get_rect()
+        self.expl_group = expl_group
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+    def update(self, group):
+        for sprite in group:
+            if pygame.sprite.collide_mask(self, sprite):
+                sprite.get_damage(16)
+                Explosion((self.rect.centerx, self.rect.y), (0.05 * width, 0.03 * height), self.expl_group)
+                self.kill()
+
+        else:
+            if self.y < 0.27 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
+                self.kill()
+
             self.x += self.delta_x
             self.y += self.delta_y
             self.rect.x = self.x
@@ -199,12 +264,16 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         # чем выше сложность, тем выше будет скорость всего происходящего
         # погодные условия потом
         global score
+
         music_list = [int(j) for j in range(11)]
         random.shuffle(music_list)
+
         for j in music_list:
             pygame.mixer.music.load('Audio/Battle{}.mp3'.format(j))
+
         pygame.mixer.music.set_volume(music_volume / 3)
         pygame.mixer.music.play()
+
         score = 0
         self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
         self.ship_group = pygame.sprite.Group()
@@ -216,12 +285,14 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.other.add(self.cursor)
         self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.1 * width, 0.04 * height,
                              placeholderText=0, colour='grey', textColour='green', fontSize=36, textHAlign='center')
+
         self.score.disable()
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
         pygame.time.set_timer(self.random_event, random.randint(1, 3) * 1000, 1)  # первое событие через 1-3 с
         pygame.time.set_timer(self.update_time, 10, 1)
         running = True
+
         while running:
             if self.player.armor <= 0:
                 pygame.mixer.music.stop()
@@ -244,18 +315,23 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     if event.key == pygame.K_RIGHT:
                         self.player.right = False
 
-                if event.type == pygame.MOUSEBUTTONDOWN:  # ПКМ - пуск торпеды
-                    if event.button == 3:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 3:  # ПКМ - пуск торпеды
                         if event.pos[1] < height * 0.6:  # но вбок нельзя
                             self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
 
+                    if event.button == 1:  # ЛКМ - выстрел из пушки
+                        if event.pos[1] < height * 0.6:  # но вбок нельзя
+                            self.player.gun_shot(event.pos, self.torpedo_group, self.other)
+
                 if event.type == self.random_event:  # генерация случайного события
-                    generated_event = random.choice(['мель' for _ in range(6)] + ['корабль' for _ in range(4)])
-                    if generated_event == 'мель':
-                        self.spawn_mine()  # спавнит мель
+                    generated_event = random.choice(['мина' for _ in range(6)] + ['корабль' for _ in range(4)])
+
+                    if generated_event == 'мина':
+                        self.spawn_mine()  # спавнит мину
 
                     else:
-                        self.spawn_enemy()  # спавнит мель корабль врага
+                        self.spawn_enemy()  # спавнит корабль врага
 
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
                 if event.type == self.update_time:
@@ -273,7 +349,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     pygame.display.flip()
                     pygame.time.set_timer(self.update_time, 25, 1)
 
-    def spawn_mine(self):  # функция спавна мели
+    def spawn_mine(self):  # функция спавна мины
         shoal_width = random.uniform(0.05, 0.3)
         Mine((random.uniform(0.05, 1 - shoal_width) * width, 0.3 * height),
              (shoal_width * width, random.uniform(0.05, 0.2) * height), self.mine_group, self.other)
@@ -284,7 +360,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                   ['Канонерка', 'Эсминец', 'Линкор', 'Крейсер']))
 
 
-class Mine(pygame.sprite.Sprite):  # класс мели
+class Mine(pygame.sprite.Sprite):  # класс мины
     def __init__(self, coords: tuple, shoal_size: tuple, group, expl_group):
         super().__init__(group)
         self.size = shoal_size
@@ -293,14 +369,14 @@ class Mine(pygame.sprite.Sprite):  # класс мели
         self.rect.x, self.rect.y = coords
         self.expl_group = expl_group
 
-    def update(self, player):  # надо сделать так, чтобы из точки вырастал остров
+    def update(self, player):  # надо сделать так, чтобы из точки вырастала мина
         self.rect.y += 0.005 * height
         if pygame.sprite.collide_mask(self, player):  # проверка удара
             player.get_damage(40)
             Explosion((self.rect.centerx, self.rect.y + self.rect.h), (0.1 * width, 0.1 * height), self.expl_group)
             self.kill()
         else:
-            if self.rect.y >= 0.95 * height:  # выход за границу
+            if self.rect.y >= height:  # выход за границу
                 self.kill()
 
 
