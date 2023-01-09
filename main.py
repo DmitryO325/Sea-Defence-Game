@@ -236,6 +236,7 @@ class Bullet(pygame.sprite.Sprite):
         self.expl_group = expl_group
         self.rect.x = self.x
         self.rect.y = self.y
+        self.rotate()
 
     def update(self, group):
         for sprite in group:
@@ -252,6 +253,14 @@ class Bullet(pygame.sprite.Sprite):
             self.y += self.delta_y
             self.rect.x = self.x
             self.rect.y = self.y
+
+    def rotate(self):
+        if self.x != self.x1:
+            if self.angle < 0:
+                self.image = pygame.transform.rotate(self.image, self.angle + 90)
+
+            else:
+                self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
 
 class Battlefield:  # игровое поле, унаследовать от WINDOW
@@ -273,7 +282,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
         self.ship_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
-        self.ball_group = pygame.sprite.Group()
+        self.bullet_group = pygame.sprite.Group()
         self.mine_group = pygame.sprite.Group()
         self.other = pygame.sprite.Group()
         self.player = Player(self.ship_group, self.other)  # игрок
@@ -316,8 +325,14 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                             self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
 
                     if event.button == 1:  # ЛКМ - выстрел из пушки
-                        if event.pos[1] < height * 0.6:  # но вбок нельзя
-                            self.player.gun_shot(event.pos, self.ball_group, self.other)
+                        sprite = pygame.sprite.spritecollideany(self.cursor, self.mine_group)
+                        if sprite:
+                            Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
+                            sprite.kill()
+                            gun.play()
+                            score += 50
+                        elif event.pos[1] < height * 0.6:  # но вбок нельзя
+                            self.player.gun_shot(event.pos, self.bullet_group, self.other)
 
                 if event.type == self.random_event:  # генерация случайного события
                     generated_event = random.choice(['мина' for _ in range(6)] + ['корабль' for _ in range(4)])
@@ -333,11 +348,11 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     screen.blit(self.bg, (0, 0))
                     self.ship_group.update()
                     self.torpedo_group.update(self.ship_group)
-                    self.ball_group.update(self.ship_group)
+                    self.bullet_group.update(self.ship_group)
                     self.mine_group.update(self.player)
                     self.other.update()
                     self.torpedo_group.draw(screen)
-                    self.ball_group.draw(screen)
+                    self.bullet_group.draw(screen)
                     self.mine_group.draw(screen)
                     self.ship_group.draw(screen)
                     self.score.setText(score)
