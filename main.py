@@ -64,12 +64,7 @@ class Player(Ship):  # класс игрока
 
     def gun_shot(self, coords, group, expl_group):  # функция выстрела из пушки
         gun.play()
-
-        if self.rect.x + self.rect.w * 0.5 > coords[0]:
-            Gun(round(self.rect.x + 0.1 * self.rect.w), round(0.93 * self.rect.y), coords, group, expl_group)
-
-        else:
-            Gun(round(self.rect.x + 0.9 * self.rect.w), round(0.93 * self.rect.y), coords, group, expl_group)
+        Bullet(round(self.rect.centerx), round(0.93 * self.rect.y), coords, group, expl_group)
 
     def update(self, *args):  # изменение местоположения
         if self.right:
@@ -217,7 +212,7 @@ class Torpedo(pygame.sprite.Sprite):
             self.rect.y = self.y
 
 
-class Gun(pygame.sprite.Sprite):
+class Bullet(pygame.sprite.Sprite):
     def __init__(self, x: int, y: int, point_coords: tuple, group, expl_group):
         super().__init__(group)
         self.x = x
@@ -234,9 +229,9 @@ class Gun(pygame.sprite.Sprite):
         if self.x1 < self.x:
             self.angle = 180 - self.angle
 
-        self.delta_y = -0.02 * height * math.sin(math.radians(self.angle))
-        self.delta_x = 0.02 * height * math.cos(math.radians(self.angle))
-        self.image = pygame.transform.scale(load_image('Ball.png'), (round(width * 0.006), round(height * 0.01)))
+        self.delta_y = -0.04 * height * math.sin(math.radians(self.angle))
+        self.delta_x = 0.04 * height * math.cos(math.radians(self.angle))
+        self.image = pygame.transform.scale(load_image('Bullet.png'), (round(width * 0.006), round(height * 0.01)))
         self.rect = self.image.get_rect()
         self.expl_group = expl_group
         self.rect.x = self.x
@@ -244,7 +239,7 @@ class Gun(pygame.sprite.Sprite):
 
     def update(self, group):
         for sprite in group:
-            if pygame.sprite.collide_mask(self, sprite):
+            if pygame.sprite.collide_rect(self, sprite):
                 sprite.get_damage(16)
                 Explosion((self.rect.centerx, self.rect.y), (0.05 * width, 0.03 * height), self.expl_group)
                 self.kill()
