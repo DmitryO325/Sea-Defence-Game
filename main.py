@@ -64,7 +64,7 @@ class Player(Ship):  # класс игрока
 
     def gun_shot(self, coords, group, expl_group):  # функция выстрела из пушки
         gun.play()
-        Bullet(round(self.rect.centerx), round(0.93 * self.rect.y), coords, group, expl_group)
+        Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coords, group, expl_group)
 
     def update(self, *args):  # изменение местоположения
         if self.right:
@@ -98,7 +98,6 @@ class Enemy(Ship):  # класс врага
         self.ship_type = ship_type
         self.armor = self.info[0]
         self.points = self.info[-1]
-
         if ship_type == 'Канонерка':
             self.image = pygame.transform.scale(load_image(random.choice(('Канонерка.png',
                                                                           'Канонерка2.png',
@@ -119,7 +118,8 @@ class Enemy(Ship):  # класс врага
             self.image = pygame.transform.scale(load_image(random.choice(('Крейсер.png',
                                                                           'Крейсер2.png'))),
                                                 (width * 0.1, height * 0.04))
-
+        self.shot_time = random.randint(6, 10)
+        self.time = pygame.time.get_ticks()
         self.rect = self.image.get_rect()
         self.direction = random.randint(0, 1)
 
@@ -129,7 +129,7 @@ class Enemy(Ship):  # класс врага
         else:
             self.rect.x = width
             self.image = pygame.transform.flip(self.image, True, False)
-
+        self.x = self.rect.x
         self.max_armor = self.armor
         self.rect.y = height * 0.25
         self.clear_event = pygame.USEREVENT + 3
@@ -140,15 +140,20 @@ class Enemy(Ship):  # класс врага
         # выпускает торпеду с периодом ок. 3-6 секунд
         # каждому типу соответствует своя картинка (см. Images)
 
-    def update(self):  # перемещение корабля
+    def update(self, player: Player, torpedo_group, expl_group):  # перемещение корабля
         if self.direction == 0:
-            self.rect.x += self.params[self.ship_type][1]
-
+            self.x += self.params[self.ship_type][1]
         else:
-            self.rect.x -= self.params[self.ship_type][1]
+            self.x -= self.params[self.ship_type][1]
+        self.rect.x = self.x
         self.pb.moveX(self.rect.x - self.pb.getX())
         self.pb.draw()
-
+        if (pygame.time.get_ticks() - self.time) / 1000 >= self.shot_time:
+            Torpedo(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
+                    (player.rect.x + random.uniform(0.4, 0.6) * player.rect.w, player.rect.y),
+                    torpedo_group, expl_group)
+            self.shot_time = random.randint(6, 10)
+            self.time = pygame.time.get_ticks()
         if not width * -0.1 <= self.rect.x <= width * 1.1:
             self.kill()
 
@@ -167,33 +172,30 @@ class Torpedo(pygame.sprite.Sprite):
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coords
-
+        self.image = pygame.transform.scale(load_image('torpedo1.png'), (round(width * 0.01), round(height * 0.12)))
         try:
             self.angle = math.ceil(math.degrees
-                                   (math.atan(abs((self.y1 - self.y) / (self.x + round(width * 0.004) - self.x1)))))
-
+                                   (math.atan((self.y1 - self.y) / (self.x - self.x1))))
+            if self.x > self.x1 and self.y > self.y1:
+                self.angle += 180
+            if self.x1 < self.x and self.y1 > self.y:
+                self.angle += 180
         except ZeroDivisionError:
             self.angle = 90
-
-        if self.x1 < self.x:
-            self.angle = 180 - self.angle
-
+            if self.y < self.y1:
+                self.angle = 270
+        print(self.angle)
+        self.rotate()
         self.delta_y = -0.0025 * height * math.sin(math.radians(self.angle))
         self.delta_x = 0.0025 * height * math.cos(math.radians(self.angle))
-        self.image = pygame.transform.scale(load_image('torpedo1.png'), (round(width * 0.01), round(height * 0.12)))
+
         self.rect = self.image.get_rect()
         self.expl_group = expl_group
-        self.rotate()
         self.rect.x = self.x
         self.rect.y = self.y
 
     def rotate(self):
-        if self.x != self.x1:
-            if self.angle < 0:
-                self.image = pygame.transform.rotate(self.image, self.angle + 90)
-
-            else:
-                self.image = pygame.transform.rotate(self.image, self.angle + 270)
+        self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
     def update(self, group):
         for sprite in group:
@@ -346,7 +348,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
                 if event.type == self.update_time:
                     screen.blit(self.bg, (0, 0))
-                    self.ship_group.update()
+                    self.ship_group.update(self.player, self.torpedo_group, self.other)
                     self.torpedo_group.update(self.ship_group)
                     self.bullet_group.update(self.ship_group)
                     self.mine_group.update(self.player)
