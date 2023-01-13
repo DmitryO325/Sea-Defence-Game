@@ -1,5 +1,4 @@
 import random
-
 import pygame
 import pygame_widgets
 from pygame_widgets.progressbar import ProgressBar
@@ -56,15 +55,44 @@ class Player(Ship):  # класс игрока
         self.rect.x, self.rect.y = round(0.35 * width), round(0.78 * height)
         self.left = False  # плывем влево
         self.right = False  # плывем вправо
+        self.reloading = False
+        self.torpedo = True
         self.armor = 100
         self.max_armor = self.armor
+        self.ammo = 0
         self.pb = ProgressBar(screen, self.rect.x, 0.05 * height, self.rect.w, 0.02 * height,
                               lambda: self.armor / self.max_armor, completedColour='green', incompletedColour='white')
+        self.start = pygame.time.get_ticks()
+        self.torpedo_time = pygame.time.get_ticks()
+        self.reload_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
+                                      lambda: (pygame.time.get_ticks() - self.start) / (1700 * (3 - self.ammo)),
+                                      completedColour='blue', incompletedColour='red')
+        self.ammo = 3
+        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+                                       lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
+                                       completedColour='blue', incompletedColour='red')
         self.pb.draw()
 
     def gun_shot(self, coords, group, expl_group):  # функция выстрела из пушки
         gun.play()
         Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coords, group, expl_group)
+        self.ammo -= 1
+        if self.ammo == 0:
+            self.start_reloading()
+
+    def start_reloading(self):
+        self.start = pygame.time.get_ticks()
+        self.reloading = True
+
+    def reload(self):
+        self.ammo = 3
+
+    def start_torpedo_reload(self):
+        self.torpedo = False
+        self.torpedo_time = pygame.time.get_ticks()
+
+    def torpedo_reload(self):
+        self.torpedo = True
 
     def update(self, *args):  # изменение местоположения
         if self.right:
@@ -78,9 +106,16 @@ class Player(Ship):  # класс игрока
 
             if self.rect.x < 0:
                 self.rect.x = 0
-
+        if pygame.time.get_ticks() - self.start >= 1700 * (3 - self.ammo) and self.reloading:
+            self.reloading = False
+            self.reload()
+        if pygame.time.get_ticks() - self.torpedo_time >= 3000:
+            self.torpedo_reload()
+        if self.reloading:
+            self.reload_bar.draw()
+        if not self.torpedo:
+            self.torpedo_bar.draw()
         self.pb.draw()
-
         if self.armor <= 0:
             self.pb.hide()
             self.explode()
@@ -152,7 +187,7 @@ class Enemy(Ship):  # класс врага
             Torpedo(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
                     (player.rect.x + random.uniform(0.4, 0.6) * player.rect.w, player.rect.y),
                     torpedo_group, expl_group)
-            self.shot_time = random.randint(6, 10)
+            self.shot_time = random.randint(8, 12)
             self.time = pygame.time.get_ticks()
         if not width * -0.1 <= self.rect.x <= width * 1.1:
             self.kill()
@@ -205,7 +240,7 @@ class Torpedo(pygame.sprite.Sprite):
                 self.kill()
 
         else:
-            if self.y < 0.27 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
+            if self.y < 0.27 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > 0.92 * height:
                 self.kill()
 
             self.x += self.delta_x
@@ -290,8 +325,8 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.player = Player(self.ship_group, self.other)  # игрок
         self.cursor = Cursor()
         self.other.add(self.cursor)
-        self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.1 * width, 0.04 * height,
-                             placeholderText=0, colour='grey', textColour='green', fontSize=36, textHAlign='center')
+        self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.06 * width, 0.04 * height,
+                             placeholderText=0, colour='grey', textColour='black', fontSize=36, textHAlign='center')
         self.score.disable()
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
@@ -321,23 +356,33 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     if event.key == pygame.K_RIGHT:
                         self.player.right = False
 
+                    if event.key == pygame.K_SPACE and 0 < self.player.ammo < 3 and not self.player.reloading:
+                        self.player.start_reloading()
+
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 3:  # ПКМ - пуск торпеды
-                        if event.pos[1] < height * 0.6:  # но вбок нельзя
-                            self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
+                        if self.player.torpedo:
+                            if event.pos[1] < height * 0.6:  # но вбок нельзя
+                                self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
+                                self.player.start_torpedo_reload()
 
                     if event.button == 1:  # ЛКМ - выстрел из пушки
-                        sprite = pygame.sprite.spritecollideany(self.cursor, self.mine_group)
-                        if sprite:
-                            Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
-                            sprite.kill()
-                            gun.play()
-                            score += 50
-                        elif event.pos[1] < height * 0.6:  # но вбок нельзя
-                            self.player.gun_shot(event.pos, self.bullet_group, self.other)
+                        if self.player.ammo != 0 and not self.player.reloading:
+                            sprite = pygame.sprite.spritecollideany(self.cursor, self.mine_group)
+                            if sprite:
+                                Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
+                                sprite.kill()
+                                gun.play()
+                                score += 50
+                                self.player.ammo -= 1
+                                if self.player.ammo == 0:
+                                    self.player.start_reloading()
+
+                            elif event.pos[1] < height * 0.6:  # но вбок нельзя
+                                self.player.gun_shot(event.pos, self.bullet_group, self.other)
 
                 if event.type == self.random_event:  # генерация случайного события
-                    generated_event = random.choice(['мина' for _ in range(6)] + ['корабль' for _ in range(4)])
+                    generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
 
                     if generated_event == 'мина':
                         self.spawn_mine()  # спавнит мину
@@ -390,7 +435,7 @@ class Mine(pygame.sprite.Sprite):  # класс мины
             Explosion((self.rect.centerx, self.rect.y + self.rect.h), (0.1 * width, 0.1 * height), self.expl_group)
             self.kill()
         else:
-            if self.rect.y >= height:  # выход за границу
+            if self.rect.y >= height * 0.98:  # выход за границу
                 self.kill()
 
 
