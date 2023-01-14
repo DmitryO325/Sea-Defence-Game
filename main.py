@@ -136,8 +136,11 @@ class Player(Ship):  # класс игрока
         self.health_bar.draw()
 
         if self.armor <= 0:
+            print('ok')
             self.health_bar.hide()
+            print('ok1')
             self.explode()
+            print('ok2')
 
 
 class Enemy(Ship):  # класс врага
@@ -346,7 +349,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         pygame.mixer.music.load(f'Audio/Battle{music_list[0]}.mp3')
         pygame.mixer.music.play()
         music_number += 1
-
+        self.start_time = pygame.time.get_ticks()
         score = 0
         self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
         self.ship_group = pygame.sprite.Group()
@@ -357,8 +360,10 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.player = Player(self.ship_group, self.other)  # игрок
         self.cursor = Cursor()
         self.other.add(self.cursor)
-        self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.06 * width, 0.04 * height,
-                             placeholderText=0, colour='grey', textColour='black', fontSize=36, textHAlign='center')
+        self.score = TextBox(screen, 0.85 * width, 0.06 * height, 0.08 * width, 0.04 * height,
+                             placeholderText=0, colour='grey', textColour='black', fontSize=36)
+        self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.08 * width, 0.04 * height,
+                             placeholderText=0, colour='grey', textColour='black', fontSize=36)
         self.score.disable()
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
@@ -369,7 +374,6 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         while running:
             if self.player.armor <= 0:
                 pygame.mixer.music.stop()
-                running = False
 
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Battle{music_list[music_number]}.mp3')
@@ -421,7 +425,10 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                                 self.player.gun_shot(event.pos, self.bullet_group, self.other)
 
                 if event.type == self.random_event:  # генерация случайного события
-                    generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
+                    if len(self.ship_group) != 1:
+                        generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
+                    else:
+                        generated_event = 'корабль'
 
                     if generated_event == 'мина':
                         self.spawn_mine()  # спавнит мину
@@ -443,6 +450,9 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     self.ship_group.draw(screen)
                     self.score.setText(score)
                     self.score.draw()
+                    self.timer.setText(f"{(pygame.time.get_ticks()  - self.start_time) // 1000 // 60}м: "
+                                       f"{(pygame.time.get_ticks()  - self.start_time) // 1000 % 60}с")
+                    self.timer.draw()
                     self.other.draw(screen)
                     pygame.display.flip()
                     pygame.time.set_timer(self.update_time, 25, 1)
