@@ -67,23 +67,23 @@ class Player(Ship):  # класс игрока
         self.max_armor = self.armor
 
         self.ammo = 0
-        self.gun_bar = ProgressBar(screen, self.rect.x, 0.05 * height, self.rect.w, 0.02 * height,
-                                   lambda: self.armor / self.max_armor, completedColour='green',
-                                   incompletedColour='white')
+        self.health_bar = ProgressBar(screen, self.rect.x, 0.05 * height, self.rect.w, 0.02 * height,
+                                      lambda: self.armor / self.max_armor, completedColour='green',
+                                      incompletedColour='white')
 
         self.start = pygame.time.get_ticks()
         self.torpedo_time = pygame.time.get_ticks()
 
-        self.reload_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                      lambda: (pygame.time.get_ticks() - self.start) / (1700 * (3 - self.ammo)),
-                                      completedColour='blue', incompletedColour='red')
+        self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
+                                   lambda: (pygame.time.get_ticks() - self.start) / (1700 * (3 - self.ammo)),
+                                   completedColour='blue', incompletedColour='red')
 
         self.ammo = 3
         self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
                                        lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
                                        completedColour='blue', incompletedColour='red')
 
-        self.gun_bar.draw()
+        self.health_bar.draw()
 
     def gun_shot(self, coordinates, group, explosion_group):  # функция выстрела из пушки
         gun.play()
@@ -128,15 +128,15 @@ class Player(Ship):  # класс игрока
             self.torpedo_reload()
 
         if self.reloading:
-            self.reload_bar.draw()
+            self.gun_bar.draw()
 
         if not self.torpedo:
             self.torpedo_bar.draw()
 
-        self.gun_bar.draw()
+        self.health_bar.draw()
 
         if self.armor <= 0:
-            self.gun_bar.hide()
+            self.health_bar.hide()
             self.explode()
 
 
