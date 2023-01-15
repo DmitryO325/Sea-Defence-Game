@@ -66,7 +66,7 @@ class MainWindow(Menu):
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
-            screen.blit(text, (round(0.5 * width) - 450, round(0.1 * height)))
+            screen.blit(text, (0.5 * width - text.get_width() // 2, round(0.1 * height)))
             pygame_widgets.update(events)
             pygame.display.flip()
 
@@ -79,7 +79,7 @@ class MainWindow(Menu):
 
     def to_top_players(self):
         self.switch()
-        # self.Win = MainWindow2()
+        self.Win = TopPlayers()
 
     def to_shipyard(self):
         self.switch()
@@ -379,6 +379,60 @@ class Options(Window):
         self.Win = MainWindow()
 
 
+class TopPlayers(Menu):
+    def __init__(self):
+        super().__init__()
+        self.Win = None
+        screen.blit(self.picture, (0, 0))
+        font = pygame.font.Font(None, 150)
+        text = font.render('Топ игроков', True, (255, 0, 0))
+        self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.3 * width, 0.075 * height, name='Тип рекорда',
+                                 choices=['Всего набранных очков', 'Набрано очков за игру', 'Время боя'],
+                                 values=[1, 2, 3],
+                                 borderRadius=3, colour='blue', fontSize=50,
+                                 direction='down', textHAlign='centre', textColour='yellow')
+        self.draw_widgets()
+        while self.running:
+            events = pygame.event.get()
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self.running = False
+            if self.combobox.getSelected():
+                if self.combobox.getSelected() == 1:
+                    pass
+                elif self.combobox.getSelected() == 2:
+                    pass
+                else:
+                    pass
+            screen.blit(self.picture, (0, 0))
+            screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
+            pygame_widgets.update(events)
+            pygame.display.flip()
+
+    def draw_widgets(self):
+        for h in range(10):
+            for w in range(2):
+                cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height, 0.45 * width,
+                              0.07 * height, textHAlign='center', textColour='blue', fontSize=40,
+                              borderColour='black', borderThickness=5)
+                cell.disable()
+                cell.draw()
+        Button(
+            screen,
+            round(width * 0.75),
+            round(height * 0.91),
+            round(width * 0.2),
+            round(height * 0.07),
+            colour='blue', text='В главное меню', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+    def to_menu(self):
+        self.switch()
+        self.Win = MainWindow()
+
+
 class Ship(pygame.sprite.Sprite):  # класс корабля (общий для игрока и противников)
     def __init__(self, group, explosion_group):
         super().__init__(group)
@@ -426,7 +480,6 @@ class Player(Ship):  # класс игрока
 
         self.start = pygame.time.get_ticks()
         self.torpedo_time = pygame.time.get_ticks()
-
         self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
                                    lambda: (pygame.time.get_ticks() - self.start) / (1700 * (3 - self.ammo)),
                                    completedColour='blue', incompletedColour='red')
@@ -806,8 +859,8 @@ class Battlefield(Window):  # игровое поле, унаследовать 
                     self.ship_group.draw(screen)
                     self.score.setText(score)
                     self.score.draw()
-                    self.timer.setText(f"{(pygame.time.get_ticks()  - self.start_time) // 1000 // 60}м: "
-                                       f"{(pygame.time.get_ticks()  - self.start_time) // 1000 % 60}с")
+                    self.timer.setText(f"{(pygame.time.get_ticks() - self.start_time) // 1000 // 60}м: "
+                                       f"{(pygame.time.get_ticks() - self.start_time) // 1000 % 60}с")
                     self.timer.draw()
                     self.other.draw(screen)
                     pygame.display.flip()
@@ -916,6 +969,7 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
     clock.tick(FPS)
     music_volume = 1
+    audio_volume = 1
     explosion = pygame.mixer.Sound('Audio/explosion.mp3')
     torpedo = pygame.mixer.Sound('Audio/torpedo.mp3')
     gun = pygame.mixer.Sound('Audio/gun.mp3')
