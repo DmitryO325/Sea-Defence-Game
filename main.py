@@ -31,6 +31,7 @@ class Window:
         # width = pygame.display.Info().current_w
         # height = pygame.display.Info().current_h
         self.running = True
+        self.Win = None
 
     def switch(self):
         self.running = False
@@ -385,24 +386,30 @@ class Battlefield(Window):  # игровое поле, унаследовать 
     def __init__(self):
         super().__init__()
 
-        music_number = 0
+        self.music_number = 0
         # чем выше сложность, тем выше будет скорость всего происходящего
         # погодные условия потом
         global score
 
-        music_list = [int(j) for j in range(17)]
-        random.shuffle(music_list)
+        self.music_list = [int(j) for j in range(18)]
+        random.shuffle(self.music_list)
 
         pygame.mixer.music.set_volume(music_volume / 3)
 
-        pygame.mixer.music.load(f'Audio/Battle{music_list[0]}.mp3')
+        pygame.mixer.music.load(f'Audio/Battle{self.music_list[0]}.mp3')
         pygame.mixer.music.play()
-        music_number += 1
+        self.music_number += 1
 
         self.start_time = pygame.time.get_ticks()
 
         score = 0
         self.background = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
+
+        self.torpedo_image = pygame.transform.scale(load_image('old_torpedo.png'), (width * 0.02, height * 0.06))
+        self.torpedo_image = pygame.transform.rotate(self.torpedo_image, 270)
+
+        self.ammo_image = pygame.transform.scale(load_image('Ball.png'), (width * 0.01, height * 0.017))
+
         self.ship_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
         self.bullet_group = pygame.sprite.Group()
@@ -413,30 +420,30 @@ class Battlefield(Window):  # игровое поле, унаследовать 
         self.other.add(self.cursor)
 
         self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.05 * width, 0.04 * height,
-                             placeholderText=0, colour='grey', textColour='black', fontSize=36, textHAlign='center')
+                             placeholderText=0, colour='grey', textColour='black', fontSize=36)
 
         self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.05 * width, 0.04 * height,
                              placeholderText=0, colour='grey', textColour='black', fontSize=36)
 
-        self.score.disable()
-
         self.end_event = pygame.USEREVENT + 3
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
+
         pygame.time.set_timer(self.random_event, random.randint(1, 3) * 1000, 1)  # первое событие через 1-3 с
         pygame.time.set_timer(self.update_time, 10, 1)
-        end = False
+
+        self.end = False
 
         while self.running:
-            if self.player.health <= 0 and not end:
-                end = True
+            if self.player.health <= 0 and not self.end:
+                self.end = True
                 pygame.time.set_timer(self.end_event, 1500, 1)
 
             if not pygame.mixer.music.get_busy():
-                pygame.mixer.music.load(f'Audio/Battle{music_list[music_number]}.mp3')
+                pygame.mixer.music.load(f'Audio/Battle{self.music_list[self.music_number]}.mp3')
                 pygame.mixer.music.play()
-                music_number += 1
-                music_number %= 17
+                self.music_number += 1
+                self.music_number %= 18
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -487,6 +494,9 @@ class Battlefield(Window):  # игровое поле, унаследовать 
                             elif event.pos[1] < height * 0.6:  # но вбок нельзя
                                 self.player.gun_shot(event.pos, self.bullet_group, self.other)
 
+                    if event.button == 2 and 0 < self.player.ammo < 3 and not self.player.reloading:
+                        self.player.start_reloading()
+
                 if event.type == self.random_event:  # генерация случайного события
                     if len(self.ship_group) != 1:
                         generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
@@ -504,6 +514,9 @@ class Battlefield(Window):  # игровое поле, унаследовать 
 
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
+                    screen.blit(self.torpedo_image, (width * 0.015, height * 0.072))
+                    screen.blit(self.ammo_image, (width * 0.025, height * 0.033))
+
                     self.ship_group.update(self.player, self.torpedo_group, self.other)
                     self.torpedo_group.update(self.ship_group)
                     self.bullet_group.update(self.ship_group)
@@ -615,6 +628,37 @@ class Cursor(pygame.sprite.Sprite):
 class Endgame(Window):
     def __init__(self):
         super().__init__()
+        self.Win = None
+        self.running = True
+        self.music_number = 0
+
+        self.background = pygame.transform.scale(load_image('Взрыв корабля.png'), screen.get_size())
+
+        self.music_list = [int(j) for j in range(4)]
+        random.shuffle(self.music_list)
+
+        pygame.mixer.music.set_volume(music_volume / 3)
+
+        pygame.mixer.music.load(f'Audio/Defeat{self.music_list[0]}.mp3')
+        pygame.mixer.music.play()
+        self.music_number += 1
+
+        self.show()
+
+    def show(self):
+        while self.running:
+            if not pygame.mixer.music.get_busy():
+                pygame.mixer.music.load(f'Audio/Defeat{self.music_list[self.music_number]}.mp3')
+                pygame.mixer.music.play()
+                self.music_number += 1
+                self.music_number %= 4
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            screen.blit(self.background, (0, 0))
+            pygame.display.flip()
 
 
 if __name__ == '__main__':
