@@ -29,7 +29,7 @@ def load_image(name):
 class Ship(pygame.sprite.Sprite):  # класс корабля (общий для игрока и противников)
     def __init__(self, group, explosion_group):
         super().__init__(group)
-        self.armor = 0  # количество брони
+        self.health = 0  # количество брони
         self.speed = 0  # скорость корабля
         self.explosion_group = explosion_group
 
@@ -45,7 +45,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
                     coordinates, group, explosion_group)
 
     def get_damage(self, damage):  # функция получения урона
-        self.armor -= damage
+        self.health -= damage
 
     def explode(self):
         self.kill()
@@ -56,44 +56,61 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
 class Player(Ship):  # класс игрока
     def __init__(self, group, explosion_group):
         super().__init__(group, explosion_group)
+
         self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.25, height * 0.25))
+
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = round(0.35 * width), round(0.78 * height)
+
         self.left = False  # плывём влево
         self.right = False  # плывём вправо
-        self.reloading = False
-        self.torpedo = True
-        self.armor = 100
-        self.max_armor = self.armor
 
-        self.ammo = 0
-        self.health_bar = ProgressBar(screen, self.rect.x, 0.05 * height, self.rect.w, 0.02 * height,
-                                      lambda: self.armor / self.max_armor, completedColour='green',
-                                      incompletedColour='white')
+        self.reloading = False
+
+        self.health = 100
+        self.max_health = self.health
+
+        self.total_ammo = 100
+        self.total_torpedoes = 20
+
+        self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.025, width * 0.03, height * 0.03,
+                                      placeholderText=0, colour='grey', textColour='black', fontSize=24)
+        self.total_ammo_box.setText(self.total_ammo)
+
+        self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.075, width * 0.03, height * 0.03,
+                                           placeholderText=0, colour='grey', textColour='black', fontSize=24)
+        self.total_torpedoes_box.setText(self.total_torpedoes)
+
+        self.health_bar = ProgressBar(screen, 0.4 * width, 0.08 * height, 0.3 * width, 0.02 * height,
+                                      lambda: self.health / self.max_health,
+                                      completedColour='darkgreen', incompletedColour='red')
 
         self.start = pygame.time.get_ticks()
         self.torpedo_time = pygame.time.get_ticks()
 
-        self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                   lambda: (pygame.time.get_ticks() - self.start) / (1700 * (3 - self.ammo)),
-                                   completedColour='blue', incompletedColour='red')
-
         self.ammo = 3
-        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
-                                       lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
-                                       completedColour='blue', incompletedColour='red')
+        self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
+                                   lambda: self.ammo / 3, completedColour='blue', incompletedColour='red')
 
-        self.health_bar.draw()
+        self.torpedo = 1
+        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+                                       lambda: 1, completedColour='blue', incompletedColour='red')
 
     def gun_shot(self, coordinates, group, explosion_group):  # функция выстрела из пушки
         gun.play()
         Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coordinates, group, explosion_group)
         self.ammo -= 1
+        self.total_ammo -= 1
+        self.total_ammo_box.setText(self.total_ammo)
 
         if self.ammo == 0:
             self.start_reloading()
 
     def start_reloading(self):
+        self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
+                                   lambda: (pygame.time.get_ticks() - self.start + self.ammo * 1700) / (1700 * 3),
+                                   completedColour='yellow', incompletedColour='red')
+
         self.start = pygame.time.get_ticks()
         self.reloading = True
 
@@ -101,11 +118,18 @@ class Player(Ship):  # класс игрока
         self.ammo = 3
 
     def start_torpedo_reload(self):
-        self.torpedo = False
+        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+                                       lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
+                                       completedColour='yellow', incompletedColour='red')
+
+        self.total_torpedoes -= 1
+        self.total_torpedoes_box.setText(self.total_torpedoes)
+
+        self.torpedo = 0
         self.torpedo_time = pygame.time.get_ticks()
 
     def torpedo_reload(self):
-        self.torpedo = True
+        self.torpedo = 1
 
     def update(self, *args):  # изменение местоположения
         if self.right:
@@ -124,18 +148,23 @@ class Player(Ship):  # класс игрока
             self.reloading = False
             self.reload()
 
+            self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
+                                       lambda: self.ammo / 3,
+                                       completedColour='blue', incompletedColour='red')
+
         if pygame.time.get_ticks() - self.torpedo_time >= 3000:
             self.torpedo_reload()
 
-        if self.reloading:
-            self.gun_bar.draw()
+            self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+                                           lambda: 1, completedColour='blue', incompletedColour='red')
 
-        if not self.torpedo:
-            self.torpedo_bar.draw()
-
+        self.gun_bar.draw()
+        self.torpedo_bar.draw()
         self.health_bar.draw()
+        self.total_ammo_box.draw()
+        self.total_torpedoes_box.draw()
 
-        if self.armor <= 0:
+        if self.health <= 0:
             self.health_bar.hide()
             self.explode()
 
@@ -144,14 +173,15 @@ class Enemy(Ship):  # класс врага
     params = {'Канонерка': (50, 2.0, 100), 'Эсминец': (100, 1.5, 150),
               'Линкор': (200, 1, 200), 'Крейсер': (300, 1, 300)}
 
-    # каждому виду корабля соответствуют свои характеристики: armor, speed, направление (вправо плывет или влево)
+    # каждому виду корабля соответствуют свои характеристики: health, speed, направление (вправо плывет или влево)
 
     def __init__(self, group, explosion_group, ship_type):
         super().__init__(group, explosion_group)
         self.info = self.params[ship_type]
         self.ship_type = ship_type
-        self.armor = self.info[0]
+        self.health = self.info[0]
         self.points = self.info[-1]
+
         if ship_type == 'Канонерка':
             self.image = pygame.transform.scale(load_image(random.choice(('Канонерка.png',
                                                                           'Канонерка2.png',
@@ -186,12 +216,13 @@ class Enemy(Ship):  # класс врага
             self.image = pygame.transform.flip(self.image, True, False)
 
         self.x = self.rect.x
-        self.max_armor = self.armor
+        self.max_health = self.health
         self.rect.y = height * 0.25
         self.clear_event = pygame.USEREVENT + 3
         self.health_bar = ProgressBar(screen, self.rect.x, self.rect.y - 0.04 * height, self.rect.w, 0.01 * height,
-                                      lambda: self.armor / self.max_armor, completedColour='red')
+                                      lambda: self.health / self.max_health, completedColour='red')
         self.health_bar.draw()
+
         # появляется за экраном
         # выпускает торпеду с периодом ок. 3-6 секунд
         # каждому типу соответствует своя картинка (см. Images)
@@ -202,6 +233,7 @@ class Enemy(Ship):  # класс врага
 
         else:
             self.x -= self.params[self.ship_type][1]
+
         self.rect.x = self.x
 
         self.health_bar.moveX(self.rect.x - self.health_bar.getX())
@@ -218,7 +250,7 @@ class Enemy(Ship):  # класс врага
         if not width * -0.1 <= self.rect.x <= width * 1.1:
             self.kill()
 
-        if self.armor <= 0:
+        if self.health <= 0:
             global score
             score += self.points
             # Анимация взрыва
@@ -348,7 +380,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         music_number += 1
 
         score = 0
-        self.bg = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
+        self.background = pygame.transform.scale(load_image('img.png'), screen.get_size())  # фоновое изображение
         self.ship_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
         self.bullet_group = pygame.sprite.Group()
@@ -367,9 +399,9 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         running = True
 
         while running:
-            if self.player.armor <= 0:
+            if self.player.health <= 0:
                 pygame.mixer.music.stop()
-                running = False
+                Endgame()
 
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Battle{music_list[music_number]}.mp3')
@@ -395,7 +427,8 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     if event.key in {pygame.K_RIGHT, pygame.K_d}:
                         self.player.right = False
 
-                    if event.key == pygame.K_SPACE and 0 < self.player.ammo < 3 and not self.player.reloading:
+                    if (event.key in {pygame.K_SPACE, pygame.K_w, pygame.K_UP} and
+                            0 < self.player.ammo < 3 and not self.player.reloading):
                         self.player.start_reloading()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -408,12 +441,17 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     if event.button == 1:  # ЛКМ - выстрел из пушки
                         if self.player.ammo != 0 and not self.player.reloading:
                             sprite = pygame.sprite.spritecollideany(self.cursor, self.mine_group)
+
                             if sprite:
                                 Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
                                 sprite.kill()
                                 gun.play()
                                 score += 50
+
                                 self.player.ammo -= 1
+                                self.player.total_ammo -= 1
+                                self.player.total_ammo_box.setText(self.player.total_ammo)
+
                                 if self.player.ammo == 0:
                                     self.player.start_reloading()
 
@@ -430,8 +468,9 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                         self.spawn_enemy()  # спавнит корабль врага
 
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+
                 if event.type == self.update_time:
-                    screen.blit(self.bg, (0, 0))
+                    screen.blit(self.background, (0, 0))
                     self.ship_group.update(self.player, self.torpedo_group, self.other)
                     self.torpedo_group.update(self.ship_group)
                     self.bullet_group.update(self.ship_group)
