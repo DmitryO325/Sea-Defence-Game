@@ -43,10 +43,7 @@ class Menu(Window):
         self.picture = pygame.image.load('Главное меню.png')
         self.picture = pygame.transform.scale(self.picture, screen.get_size())
 
-        self.connection = sqlite3.connect('Data/name.sqlite')
-        self.cursor = self.connection.cursor()
-
-        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names_data = tuple(cursor.execute('''SELECT * FROM data''').fetchall())
         self.names = tuple(map(lambda x: x[1], self.names_data))
 
         with open('preferences.txt') as file:
@@ -94,7 +91,7 @@ class MainWindow(Menu):
 
     def to_survival(self):
         self.switch()
-        # self.Win = MainWindow2()
+        self.Win = Battlefield()
 
     def to_name(self):
         self.switch()
@@ -283,18 +280,18 @@ class Name(Menu):  # переход к окну "Имя"
         self.draw_buttons()
 
     def update_data(self):
-        self.names_data = tuple(self.cursor.execute('''SELECT * FROM data''').fetchall())
+        self.names_data = tuple(cursor.execute('''SELECT * FROM data''').fetchall())
         self.names = tuple(map(lambda x: x[1], self.names_data))
 
     def new_name(self):
-        self.cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
-        self.connection.commit()
+        cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
+        connection.commit()
         self.update_data()
         self.delete_name_field()
 
     def change_name(self):
-        self.cursor.execute(f'''UPDATE data SET name = '{self.name_box.getText()}' WHERE id = {self.name_id}''')
-        self.connection.commit()
+        cursor.execute(f'''UPDATE data SET name = '{self.name_box.getText()}' WHERE id = {self.name_id}''')
+        connection.commit()
         self.update_data()
         self.delete_name_field()
 
@@ -908,6 +905,8 @@ class Endgame(Window):
 
 if __name__ == '__main__':
     pygame.init()
+    connection = sqlite3.connect('Data/name.sqlite')
+    cursor = connection.cursor()
     FPS = 60
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
     size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -928,4 +927,3 @@ if __name__ == '__main__':
         img = pygame.transform.scale(img, (width * 0.05, height * 0.05))
         explosion_anim.append(img)
     MainWindow()
-
