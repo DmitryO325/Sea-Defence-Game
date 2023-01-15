@@ -26,6 +26,17 @@ def load_image(name):
     return image
 
 
+class Window:
+    def __init__(self):
+        # width = pygame.display.Info().current_w
+        # height = pygame.display.Info().current_h
+        self.running = True
+
+    def switch(self):
+        self.running = False
+        delete_widgets()
+
+
 class Ship(pygame.sprite.Sprite):  # класс корабля (общий для игрока и противников)
     def __init__(self, group, explosion_group):
         super().__init__(group)
@@ -136,11 +147,8 @@ class Player(Ship):  # класс игрока
         self.health_bar.draw()
 
         if self.armor <= 0:
-            print('ok')
             self.health_bar.hide()
-            print('ok1')
             self.explode()
-            print('ok2')
 
 
 class Enemy(Ship):  # класс врага
@@ -270,7 +278,11 @@ class Torpedo(pygame.sprite.Sprite):
         for sprite in group:
             if pygame.sprite.collide_mask(self, sprite):
                 sprite.get_damage(80)
-                Explosion((self.rect.centerx, self.rect.y), (0.05 * width, 0.03 * height), self.explosion_group)
+                if self.delta_y < 0:
+                    Explosion((self.rect.centerx, self.rect.y), (0.05 * width, 0.03 * height), self.explosion_group)
+                else:
+                    Explosion((self.rect.centerx, self.rect.y + self.rect.h),
+                              (0.05 * width, 0.03 * height), self.explosion_group)
                 self.kill()
 
         else:
@@ -334,8 +346,9 @@ class Bullet(pygame.sprite.Sprite):
                 self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
 
-class Battlefield:  # игровое поле, унаследовать от WINDOW
+class Battlefield(Window):  # игровое поле, унаследовать от WINDOW
     def __init__(self):
+        super().__init__()
         music_number = 0
         # чем выше сложность, тем выше будет скорость всего происходящего
         # погодные условия потом
@@ -365,15 +378,16 @@ class Battlefield:  # игровое поле, унаследовать от WIN
         self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.08 * width, 0.04 * height,
                              placeholderText=0, colour='grey', textColour='black', fontSize=36)
         self.score.disable()
+        self.end_event = pygame.USEREVENT + 3
         self.update_time = pygame.USEREVENT + 2
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
         pygame.time.set_timer(self.random_event, random.randint(1, 3) * 1000, 1)  # первое событие через 1-3 с
         pygame.time.set_timer(self.update_time, 10, 1)
-        running = True
-
-        while running:
-            if self.player.armor <= 0:
-                pygame.mixer.music.stop()
+        end = False
+        while self.running:
+            if self.player.armor <= 0 and not end:
+                end = True
+                pygame.time.set_timer(self.end_event, 1500, 1)
 
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Battle{music_list[music_number]}.mp3')
@@ -383,7 +397,7 @@ class Battlefield:  # игровое поле, унаследовать от WIN
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    running = False
+                    self.running = False
 
                 if event.type == pygame.KEYDOWN:
                     if event.key in {pygame.K_LEFT, pygame.K_a}:
@@ -456,6 +470,10 @@ class Battlefield:  # игровое поле, унаследовать от WIN
                     self.other.draw(screen)
                     pygame.display.flip()
                     pygame.time.set_timer(self.update_time, 25, 1)
+                if event.type == self.end_event:
+                    pygame.mixer.music.stop()
+                    self.switch()
+                    self.Win = Endgame()
 
     def spawn_mine(self):  # функция спавна мины
         shoal_width = random.uniform(0.05, 0.3)
@@ -538,9 +556,9 @@ class Cursor(pygame.sprite.Sprite):
             self.rect.x = -100
 
 
-class Endgame:
+class Endgame(Window):
     def __init__(self):
-        pass
+        super().__init__()
 
 
 if __name__ == '__main__':
