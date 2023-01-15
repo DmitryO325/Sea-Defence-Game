@@ -85,14 +85,6 @@ class Player(Ship):  # класс игрока
         self.total_ammo = 100
         self.total_torpedoes = 20
 
-        self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.025, width * 0.03, height * 0.03,
-                                      placeholderText=0, colour='grey', textColour='black', fontSize=24)
-        self.total_ammo_box.setText(self.total_ammo)
-
-        self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.075, width * 0.03, height * 0.03,
-                                           placeholderText=0, colour='grey', textColour='black', fontSize=24)
-        self.total_torpedoes_box.setText(self.total_torpedoes)
-
         self.health_bar = ProgressBar(screen, 0.4 * width, 0.08 * height, 0.3 * width, 0.02 * height,
                                       lambda: self.health / self.max_health,
                                       completedColour='darkgreen', incompletedColour='red')
@@ -113,7 +105,6 @@ class Player(Ship):  # класс игрока
         Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coordinates, group, explosion_group)
         self.ammo -= 1
         self.total_ammo -= 1
-        self.total_ammo_box.setText(self.total_ammo)
 
         if self.ammo == 0:
             self.start_reloading()
@@ -135,13 +126,25 @@ class Player(Ship):  # класс игрока
                                        completedColour='yellow', incompletedColour='red')
 
         self.total_torpedoes -= 1
-        self.total_torpedoes_box.setText(self.total_torpedoes)
 
         self.torpedo = 0
         self.torpedo_time = pygame.time.get_ticks()
 
     def torpedo_reload(self):
         self.torpedo = 1
+
+    def add_bullets(self, ammo):
+        self.total_ammo += ammo
+
+    def add_torpedoes(self, torpedoes):
+        self.total_torpedoes += torpedoes
+
+    def add_health(self, health):
+        self.health = self.health + health if self.health + health <= self.max_health else self.max_health
+
+    def add_max_health(self, health):
+        self.max_health += health
+        self.health += health
 
     def update(self, *args):  # изменение местоположения
         if self.right:
@@ -173,8 +176,6 @@ class Player(Ship):  # класс игрока
         self.gun_bar.draw()
         self.torpedo_bar.draw()
         self.health_bar.draw()
-        self.total_ammo_box.draw()
-        self.total_torpedoes_box.draw()
 
         if self.health <= 0:
             self.health_bar.hide()
@@ -193,6 +194,8 @@ class Enemy(Ship):  # класс врага
         self.ship_type = ship_type
         self.health = self.info[0]
         self.points = self.info[-1]
+
+        self.event = 0
 
         if ship_type == 'Канонерка':
             self.image = pygame.transform.scale(load_image(random.choice(('Канонерка.png',
@@ -239,7 +242,7 @@ class Enemy(Ship):  # класс врага
         # выпускает торпеду с периодом ок. 3-6 секунд
         # каждому типу соответствует своя картинка (см. Images)
 
-    def update(self, player: Player, torpedo_group, explosion_group):  # перемещение корабля
+    def update(self, player: Player, torpedo_group, bonus_group, explosion_group):  # перемещение корабля
         if self.direction == 0:
             self.x += self.params[self.ship_type][1]
 
@@ -267,8 +270,75 @@ class Enemy(Ship):  # класс врага
             score += self.points
             # Анимация взрыва
             self.kill()
+
+            self.event = random.randint(1, 100)
+
+            if 1 <= self.event <= 35:
+                Bonuses(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
+                        (self.rect.centerx + random.uniform(0.4, 0.6) * self.rect.w, height),
+                        bonus_group, explosion_group, self.event)
+
+            self.event = 0
+
             self.explode()
             self.health_bar.hide()
+
+
+class Bonuses(pygame.sprite.Sprite):
+    def __init__(self, x, y, point_coordinates, group, explosion_group, bonus_number):
+        super().__init__(group)
+        self.x = x
+        self.y = y
+        self.x1, self.y1 = point_coordinates
+        self.bonus_number = bonus_number
+
+        if 1 <= self.bonus_number <= 20:
+            self.image = pygame.transform.scale(load_image('Bullets.png'),
+                                                (round(width * 0.05 * 9 / 16), round(height * 0.05)))
+
+        elif 21 <= self.bonus_number <= 40:
+            self.image = pygame.transform.scale(load_image('Torpedoes.png'),
+                                                (round(width * 0.05 * 9 / 16), round(height * 0.05)))
+
+        elif 41 <= self.bonus_number <= 60:
+            self.image = pygame.transform.scale(load_image('Repair.png'),
+                                                (round(width * 0.05 * 9 / 16), round(height * 0.05)))
+
+        elif 61 <= self.bonus_number <= 70:
+            self.image = pygame.transform.scale(load_image('Modification.png'),
+                                                (round(width * 0.05 * 9 / 16), round(height * 0.05)))
+
+        self.delta_y = 0.0025 * height
+
+        self.rect = self.image.get_rect()
+        self.explosion_group = explosion_group
+
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+    def update(self, group):
+        for sprite in group:
+            if pygame.sprite.collide_mask(self, sprite):
+                if 1 <= self.bonus_number <= 20:
+                    sprite.add_bullets(random.randint(5, 25))
+
+                elif 21 <= self.bonus_number <= 40:
+                    sprite.add_torpedoes(random.randint(1, 7))
+
+                elif 41 <= self.bonus_number <= 60:
+                    sprite.add_health(random.randint(5, 20))
+
+                elif 61 <= self.bonus_number <= 70:
+                    sprite.add_max_health(random.randint(3, 15))
+
+                self.kill()
+
+        else:
+            if self.y < 0.27 * height or self.x < -0.05 * width or self.x > 1.05 * width or self.y > height:
+                self.kill()
+
+            self.y += self.delta_y
+            self.rect.y = self.y
 
 
 class Torpedo(pygame.sprite.Sprite):
@@ -280,8 +350,7 @@ class Torpedo(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(load_image('torpedo1.png'), (round(width * 0.01), round(height * 0.12)))
 
         try:
-            self.angle = math.ceil(math.degrees
-                                   (math.atan((self.y1 - self.y) / (self.x - self.x1))))
+            self.angle = math.ceil(math.degrees(math.atan((self.y1 - self.y) / (self.x - self.x1))))
 
             if self.x > self.x1 and self.y > self.y1:
                 self.angle += 180
@@ -296,11 +365,13 @@ class Torpedo(pygame.sprite.Sprite):
                 self.angle = 270
 
         self.rotate()
+
         self.delta_y = -0.0025 * height * math.sin(math.radians(self.angle))
         self.delta_x = 0.0025 * height * math.cos(math.radians(self.angle))
 
         self.rect = self.image.get_rect()
         self.explosion_group = explosion_group
+
         self.rect.x = self.x
         self.rect.y = self.y
 
@@ -337,6 +408,7 @@ class Bullet(pygame.sprite.Sprite):
         self.x = x
         self.y = y
         self.x1, self.y1 = point_coordinates
+        self.image = pygame.transform.scale(load_image('Bullet.png'), (round(width * 0.006), round(height * 0.01)))
 
         try:
             self.angle = math.floor(math.degrees
@@ -348,14 +420,24 @@ class Bullet(pygame.sprite.Sprite):
         if self.x1 < self.x:
             self.angle = 180 - self.angle
 
+        self.rotate()
+
         self.delta_y = -0.04 * height * math.sin(math.radians(self.angle))
         self.delta_x = 0.04 * height * math.cos(math.radians(self.angle))
-        self.image = pygame.transform.scale(load_image('Bullet.png'), (round(width * 0.006), round(height * 0.01)))
+
         self.rect = self.image.get_rect()
         self.explosion_group = explosion_group
+
         self.rect.x = self.x
         self.rect.y = self.y
-        self.rotate()
+
+    def rotate(self):
+        if self.x != self.x1:
+            if self.angle < 0:
+                self.image = pygame.transform.rotate(self.image, self.angle + 90)
+
+            else:
+                self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
     def update(self, group):
         for sprite in group:
@@ -372,14 +454,6 @@ class Bullet(pygame.sprite.Sprite):
             self.y += self.delta_y
             self.rect.x = self.x
             self.rect.y = self.y
-
-    def rotate(self):
-        if self.x != self.x1:
-            if self.angle < 0:
-                self.image = pygame.transform.rotate(self.image, self.angle + 90)
-
-            else:
-                self.image = pygame.transform.rotate(self.image, self.angle + 270)
 
 
 class Battlefield(Window):  # игровое поле, унаследовать от WINDOW
@@ -408,13 +482,16 @@ class Battlefield(Window):  # игровое поле, унаследовать 
         self.torpedo_image = pygame.transform.scale(load_image('old_torpedo.png'), (width * 0.02, height * 0.06))
         self.torpedo_image = pygame.transform.rotate(self.torpedo_image, 270)
 
-        self.ammo_image = pygame.transform.scale(load_image('Ball.png'), (width * 0.01, height * 0.017))
+        self.ammo_image = pygame.transform.scale(load_image('Bullet.png'), (width * 0.008, height * 0.03))
+        self.ammo_image = pygame.transform.rotate(self.ammo_image, 270)
 
         self.ship_group = pygame.sprite.Group()
         self.torpedo_group = pygame.sprite.Group()  # группы спрайтов
         self.bullet_group = pygame.sprite.Group()
         self.mine_group = pygame.sprite.Group()
+        self.bonus_group = pygame.sprite.Group()
         self.other = pygame.sprite.Group()
+
         self.player = Player(self.ship_group, self.other)  # игрок
         self.cursor = Cursor()
         self.other.add(self.cursor)
@@ -424,6 +501,12 @@ class Battlefield(Window):  # игровое поле, унаследовать 
 
         self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.05 * width, 0.04 * height,
                              placeholderText=0, colour='grey', textColour='black', fontSize=36)
+
+        self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.025, width * 0.03, height * 0.03,
+                                      placeholderText=0, colour='grey', textColour='black', fontSize=24)
+
+        self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.075, width * 0.03, height * 0.03,
+                                           placeholderText=0, colour='grey', textColour='black', fontSize=24)
 
         self.end_event = pygame.USEREVENT + 3
         self.update_time = pygame.USEREVENT + 2
@@ -486,7 +569,7 @@ class Battlefield(Window):  # игровое поле, унаследовать 
 
                                 self.player.ammo -= 1
                                 self.player.total_ammo -= 1
-                                self.player.total_ammo_box.setText(self.player.total_ammo)
+                                self.total_ammo_box.setText(self.player.total_ammo)
 
                                 if self.player.ammo == 0:
                                     self.player.start_reloading()
@@ -515,18 +598,20 @@ class Battlefield(Window):  # игровое поле, унаследовать 
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
                     screen.blit(self.torpedo_image, (width * 0.015, height * 0.072))
-                    screen.blit(self.ammo_image, (width * 0.025, height * 0.033))
+                    screen.blit(self.ammo_image, (width * 0.025, height * 0.032))
 
-                    self.ship_group.update(self.player, self.torpedo_group, self.other)
+                    self.ship_group.update(self.player, self.torpedo_group, self.bonus_group, self.other)
                     self.torpedo_group.update(self.ship_group)
                     self.bullet_group.update(self.ship_group)
                     self.mine_group.update(self.player)
+                    self.bonus_group.update(self.ship_group)
                     self.other.update()
 
                     self.torpedo_group.draw(screen)
                     self.bullet_group.draw(screen)
                     self.mine_group.draw(screen)
                     self.ship_group.draw(screen)
+                    self.bonus_group.draw(screen)
 
                     self.score.setText(score)
                     self.score.draw()
@@ -534,6 +619,12 @@ class Battlefield(Window):  # игровое поле, унаследовать 
                     self.timer.setText(f"{(pygame.time.get_ticks() - self.start_time) // 1000 // 60}:"
                                        f"{str((pygame.time.get_ticks() - self.start_time) // 1000 % 60).zfill(2)}")
                     self.timer.draw()
+
+                    self.total_ammo_box.setText(self.player.total_ammo)
+                    self.total_ammo_box.draw()
+
+                    self.total_torpedoes_box.setText(self.player.total_torpedoes)
+                    self.total_torpedoes_box.draw()
 
                     self.other.draw(screen)
                     pygame.display.flip()
