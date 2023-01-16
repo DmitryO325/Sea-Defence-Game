@@ -40,17 +40,16 @@ class Window:
 class Menu(Window):
     def __init__(self):
         super().__init__()
+        print(cursor1.execute('select * from player').fetchone())
+        global player, playerID, width, height, music_volume, screen, size
+        playerID = int(open("Data/last_player.txt").readline())
+        player, width, height, music_volume = cursor1.execute(f'SELECT name, width, height, music FROM Player '
+                                                              f'WHERE ID={playerID}').fetchone()
+        size = width, height
+        screen = pygame.display.set_mode(size)
+        pygame.mixer.music.set_volume(music_volume)
         self.picture = pygame.image.load('Главное меню.png')
         self.picture = pygame.transform.scale(self.picture, screen.get_size())
-
-        self.names_data = tuple(cursor.execute('''SELECT * FROM data''').fetchall())
-        self.names = tuple(map(lambda x: x[1], self.names_data))
-
-        with open('preferences.txt') as file:
-            self.file_data = file.readlines()
-            self.name_id = int(self.file_data[0][7:])
-
-        self.selected_name = self.names[self.name_id - 1]
 
 
 class MainWindow(Menu):
@@ -118,7 +117,7 @@ class MainWindow(Menu):
             round(height * 0.03),
             round(width * 0.15),
             round(height * 0.05),
-            colour='lightblue', text='username', onRelease=self.to_name, fontSize=36
+            colour='lightblue', text=player, onRelease=self.to_name, fontSize=36
         )
 
 
@@ -159,7 +158,7 @@ class Name(Menu):  # переход к окну "Имя"
             round(0.1 * height),
             round(0.3 * width),
             round(0.05 * height),
-            name=self.selected_name, choices=self.names, fontSize=54,
+            name=player, choices=self.names, fontSize=54,
             colour='green', hoverColour='yellow', pressedColour='red'
         )
 
@@ -300,16 +299,18 @@ class Options(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
+        self.music_value = cursor1.execute(f'SELECT Music FROM Player WHERE ID={playerID}').fetchone()[0]
+        self.sounds_value = cursor1.execute(f'SELECT Sounds FROM Player WHERE ID={playerID}').fetchone()[0]
         self.music_box = TextBox(screen, round(0.52 * width) + 200, round(0.2 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость музыки
         self.music_slider = Slider(screen, round(0.2 * width) + 200, round(0.2 * height), round(width * 0.3), 30,
                                    colour='white', handleColour=pygame.Color('red'),
-                                   max=1, min=0, step=0.01, initial=1)  # ползунок громкости музыки
+                                   max=1, min=0, step=0.01, initial=self.music_value)  # ползунок громкости музыки
         self.sound_box = TextBox(screen, round(0.52 * width) + 200, round(0.3 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость звуков
         self.sound_slider = Slider(screen, round(0.2 * width) + 200, round(0.3 * height), round(width * 0.3), 30,
                                    colour='white', handleColour=pygame.Color('red'),
-                                   max=1, min=0, step=0.01, initial=1)  # ползунок громкости звуков
+                                   max=1, min=0, step=0.01, initial=self.sounds_value)  # ползунок громкости звуков
         self.combobox1 = Dropdown(screen, round(0.2 * width) + 200, round(0.4 * height), round(width * 0.3),
                                   50, name='Разрешение экрана',  # настройка расширения экрана
                                   choices=['Полный экран', '1280 x 720', '1920 x 1080',
@@ -340,6 +341,7 @@ class Options(Window):
                 self.new_width, self.new_height = self.combobox1.getSelected()
             if self.combobox2.getSelected():
                 clock.tick(int(self.combobox2.getSelected()))
+                cursor1.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
             screen.blit(self.picture, (0, 0))
             screen.blit(header_text, (round(0.4 * width), round(0.05 * height)))
             for num in range(len(functions_texts)):
@@ -349,11 +351,11 @@ class Options(Window):
             pygame.display.flip()
 
     def update_sliders(self):
-        current_music_slider_value = self.music_slider.getValue()
-        self.music_box.setText(str(round(100 * current_music_slider_value)))
-        pygame.mixer.music.set_volume(current_music_slider_value)
-        current_sound_slider_value = self.sound_slider.getValue()
-        self.sound_box.setText(str(round(100 * current_sound_slider_value)))
+        self.music_value = self.music_slider.getValue()
+        self.music_box.setText(str(round(100 * self.music_value)))
+        pygame.mixer.music.set_volume(self.music_value)
+        self.sounds_value = self.sound_slider.getValue()
+        self.sound_box.setText(str(round(100 * self.sounds_value)))
 
     def draw_buttons(self):
         Button(
@@ -373,9 +375,15 @@ class Options(Window):
         try:
             if self.new_width != width:
                 size = width, height = self.new_width, self.new_height
+                cursor1.execute(f'UPDATE Player SET Width={self.new_width}, Height={self.new_height} '
+                                f'WHERE ID={playerID}')
+                connection1.commit()
                 pygame.display.set_mode(size)
         except AttributeError:
             pass
+        cursor1.execute(f'UPDATE Player SET Music={self.music_value}, Sounds={self.sounds_value} '
+                        f'WHERE ID={playerID}')
+        connection1.commit()
         self.Win = MainWindow()
 
 
@@ -392,6 +400,8 @@ class TopPlayers(Menu):
                                  borderRadius=3, colour='blue', fontSize=50,
                                  direction='down', textHAlign='centre', textColour='yellow')
         self.draw_widgets()
+        info = cursor1.execute('SELECT * FROM player').fetchall()
+        print(info)
         while self.running:
             events = pygame.event.get()
             for event in events:
@@ -1143,6 +1153,10 @@ class Endgame(Window):
 
 if __name__ == '__main__':
     pygame.init()
+    player = None
+    playerID = None
+    connection1 = sqlite3.connect('Data/database.sqlite')
+    cursor1 = connection1.cursor()
     connection = sqlite3.connect('Data/name.sqlite')
     cursor = connection.cursor()
     FPS = 60
