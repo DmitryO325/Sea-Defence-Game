@@ -399,9 +399,8 @@ class TopPlayers(Menu):
                                  values=[1, 2, 3],
                                  borderRadius=3, colour='blue', fontSize=50,
                                  direction='down', textHAlign='centre', textColour='yellow')
+        self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
         self.draw_widgets()
-        info = cursor1.execute('SELECT * FROM player').fetchall()
-        print(info)
         while self.running:
             events = pygame.event.get()
             for event in events:
@@ -409,11 +408,11 @@ class TopPlayers(Menu):
                     self.running = False
             if self.combobox.getSelected():
                 if self.combobox.getSelected() == 1:
-                    pass
+                    self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score').fetchall()
                 elif self.combobox.getSelected() == 2:
-                    pass
+                    self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
                 else:
-                    pass
+                    self.info = cursor1.execute('SELECT Player_name, Time FROM Game ORDER BY Time').fetchall()
             screen.blit(self.picture, (0, 0))
             screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
             pygame_widgets.update(events)
@@ -422,9 +421,16 @@ class TopPlayers(Menu):
     def draw_widgets(self):
         for h in range(10):
             for w in range(2):
-                cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height, 0.45 * width,
-                              0.07 * height, textHAlign='center', textColour='blue', fontSize=40,
-                              borderColour='black', borderThickness=5)
+                try:
+                    cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height,
+                                  0.45 * width, 0.07 * height, textHAlign='center',
+                                  textColour='blue', fontSize=40,
+                                  borderColour='black', borderThickness=5, text=f'{self.info[h][w]}')
+                except IndexError:
+                    cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height,
+                                  0.45 * width,
+                                  0.07 * height, textHAlign='center', textColour='gold', fontSize=48,
+                                  borderColour='black', borderThickness=5, text='-')
                 cell.disable()
                 cell.draw()
         Button(
