@@ -82,8 +82,8 @@ class Player(Ship):  # класс игрока
         self.health = 100
         self.max_health = self.health
 
-        self.total_ammo = 100
-        self.total_torpedoes = 20
+        self.total_ammo = 0
+        self.total_torpedoes = 0
 
         self.health_bar = ProgressBar(screen, 0.4 * width, 0.08 * height, 0.3 * width, 0.02 * height,
                                       lambda: self.health / self.max_health,
@@ -273,23 +273,19 @@ class Enemy(Ship):  # класс врага
 
             self.event = random.randint(1, 100)
 
-            if 1 <= self.event <= 35:
+            if 1 <= self.event <= 70:
                 Bonuses(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
-                        (self.rect.centerx + random.uniform(0.4, 0.6) * self.rect.w, height),
-                        bonus_group, explosion_group, self.event)
-
-            self.event = 0
+                        bonus_group, self.event)
 
             self.explode()
             self.health_bar.hide()
 
 
 class Bonuses(pygame.sprite.Sprite):
-    def __init__(self, x, y, point_coordinates, group, explosion_group, bonus_number):
+    def __init__(self, x, y, group, bonus_number):
         super().__init__(group)
         self.x = x
         self.y = y
-        self.x1, self.y1 = point_coordinates
         self.bonus_number = bonus_number
 
         if 1 <= self.bonus_number <= 20:
@@ -311,7 +307,6 @@ class Bonuses(pygame.sprite.Sprite):
         self.delta_y = 0.0025 * height
 
         self.rect = self.image.get_rect()
-        self.explosion_group = explosion_group
 
         self.rect.x = self.x
         self.rect.y = self.y
@@ -552,13 +547,13 @@ class Battlefield(Window):  # игровое поле, унаследовать 
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 3:  # ПКМ - пуск торпеды
-                        if self.player.torpedo:
+                        if self.player.torpedo and self.player.total_torpedoes > 0:
                             if event.pos[1] < height * 0.6:  # но вбок нельзя
                                 self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
                                 self.player.start_torpedo_reload()
 
                     if event.button == 1:  # ЛКМ - выстрел из пушки
-                        if self.player.ammo != 0 and not self.player.reloading:
+                        if self.player.ammo != 0 and not self.player.reloading and self.player.total_ammo > 0:
                             sprite = pygame.sprite.spritecollideany(self.cursor, self.mine_group)
 
                             if sprite:
@@ -594,6 +589,8 @@ class Battlefield(Window):  # игровое поле, унаследовать 
                         self.spawn_enemy()  # спавнит корабль врага
 
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+                if self.player.total_ammo == 0 and self.player.total_torpedoes == 0 and len(self.bonus_group) < 3:
+                    Bonuses(random.uniform(0.1, 0.9) * width, 0.35 * height, self.bonus_group, random.randint(1, 41))
 
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
@@ -722,7 +719,7 @@ class Endgame(Window):
         self.Win = None
         self.running = True
         self.music_number = 0
-
+        pygame.mouse.set_visible(True)
         self.background = pygame.transform.scale(load_image('Взрыв корабля.png'), screen.get_size())
 
         self.music_list = [int(j) for j in range(4)]
