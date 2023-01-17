@@ -65,6 +65,7 @@ class MainWindow(Menu):
 
         while self.running:
             events = pygame.event.get()
+
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -115,6 +116,7 @@ class MainWindow(Menu):
                 fontSize=60, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
                 onRelease=button_functions[number_of_button - 1]
             )
+
         Button(  # создание кнопки для настройки пользователя
             screen,
             round(width * 0.835),
@@ -372,7 +374,7 @@ class Name(Menu):  # переход к окну "Имя"
                 raise sqlite3.IntegrityError
 
             self.cursor.execute(f'''INSERT INTO Player(
-            Name, Width, Height, FPS, Money, Music, Sounds,  Score) VALUES 
+            Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
             ('{self.name_box.getText()}', {width}, {height}, {FPS}, 0, {music_volume}, {audio_volume}, 0)''')
 
             self.connection.commit()
@@ -519,6 +521,7 @@ class Options(Menu):
     def to_menu(self):
         global width, height, size
         self.switch()
+
         try:
             if self.new_width != width:
                 size = width, height = self.new_width, self.new_height
@@ -648,7 +651,7 @@ class Player(Ship):  # класс игрока
         self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.25, height * 0.25))
 
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = round(0.35 * width), round(0.78 * height)
+        self.rect.x, self.rect.y = round(0.375 * width), round(0.78 * height)
 
         self.left = False  # плывём влево
         self.right = False  # плывём вправо
@@ -814,6 +817,8 @@ class Enemy(Ship):  # класс врага
         self.health_bar.draw()
 
     def update(self, player: Player, torpedo_group, bonus_group, explosion_group):  # перемещение корабля
+        global score
+
         if self.direction == 0:
             self.x += self.params[self.ship_type][1]
 
@@ -837,7 +842,6 @@ class Enemy(Ship):  # класс врага
             self.kill()  # при выходе за горизонт
 
         if self.health <= 0:
-            global score
             score += self.points
 
             self.kill()
@@ -971,6 +975,7 @@ class Torpedo(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x: int, y: int, point_coordinates: tuple, group, explosion_group):
         super().__init__(group)
+
         self.x = x  # координаты снаряда
         self.y = y
         self.x1, self.y1 = point_coordinates
@@ -1025,6 +1030,7 @@ class Bullet(pygame.sprite.Sprite):
 class Battlefield(Window):  # игровое поле, унаследовано от WINDOW
     def __init__(self):
         super().__init__()
+        self.Win = None
 
         self.music_number = 0  # номер саундтрека
         global score
@@ -1291,10 +1297,14 @@ class Endgame(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
+
         self.running = True
         self.music_number = 0
         pygame.mouse.set_visible(True)
         self.background = pygame.transform.scale(load_image('Взрыв корабля.png'), screen.get_size())
+
+        font = pygame.font.Font(None, 150)
+        self.text = font.render(f'Вас счёт: {score}!', True, (150, 50, 0))
 
         self.music_list = [int(j) for j in range(4)]
         random.shuffle(self.music_list)
@@ -1305,21 +1315,58 @@ class Endgame(Window):
         pygame.mixer.music.play()
         self.music_number += 1
 
+        self.draw_buttons()
         self.show()
+
+    def draw_buttons(self):
+        Button(  # кнопка "Переиграть"
+            screen,
+            round(width * 0.5),
+            round(height * 0.85),
+            round(width * 0.2),
+            round(height * 0.1),
+            colour='blue', text='Переиграть', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_survival
+        )
+
+        Button(  # кнопка "В меню"
+            screen,
+            round(width * 0.75),
+            round(height * 0.85),
+            round(width * 0.2),
+            round(height * 0.1),
+            colour='blue', text='В меню', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+    def to_menu(self):
+        self.switch()
+        self.Win = MainWindow()
+
+    def to_survival(self):
+        self.switch()
+        self.Win = Battlefield()
 
     def show(self):
         while self.running:
+            events = pygame.event.get()
+
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Defeat{self.music_list[self.music_number]}.mp3')
                 pygame.mixer.music.play()
                 self.music_number += 1
                 self.music_number %= 4
 
-            for event in pygame.event.get():
+            for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
 
             screen.blit(self.background, (0, 0))
+            screen.blit(self.text, (0.75 * width - self.text.get_width() // 2, round(0.1 * height)))
+
+            pygame_widgets.update(events)
             pygame.display.flip()
 
 
@@ -1345,7 +1392,7 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
     clock.tick(FPS)
 
-    score = 1
+    score = 0
     explosion_anim = []
 
     for i in range(1, 17):
