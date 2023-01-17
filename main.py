@@ -756,10 +756,6 @@ class Player(Ship):  # класс игрока
             self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
                                            lambda: 1, completedColour='blue', incompletedColour='red')
 
-        self.gun_bar.draw()
-        self.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
-        self.health_bar.draw()
-
         if self.health <= 0:
             self.health_bar.hide()  # взрыв корабля
             self.explode()
@@ -1166,7 +1162,6 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                 if self.player.total_ammo == 0 and self.player.total_torpedoes == 0 and len(self.bonus_group) < 3:
                     Bonuses(random.uniform(0.1, 0.9) * width, 0.35 * height, self.bonus_group, random.randint(1, 41))
                     # если у игрока нет снарядов, приходит поддержка
-
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
                     screen.blit(self.torpedo_image, (width * 0.015, height * 0.072))
@@ -1198,7 +1193,12 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     self.total_torpedoes_box.setText(self.player.total_torpedoes)
                     self.total_torpedoes_box.draw()
 
+                    self.player.gun_bar.draw()
+                    self.player.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
+                    self.player.health_bar.draw()
+
                     self.other.draw(screen)
+
                     pygame.display.flip()
                     pygame.time.set_timer(self.update_time, 25, 1)
 
