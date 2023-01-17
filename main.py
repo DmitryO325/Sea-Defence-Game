@@ -136,7 +136,8 @@ class Name(Menu):  # переход к окну "Имя"
         self.names_combobox = None
         self.name_box = None
 
-        self.new_name_status = 'repeat'
+        self.name_status = 'repeat'
+
         self.create_name = self.edit_name = self.remove_name = False
 
         self.players_data = tuple(self.cursor.execute('''SELECT * FROM Player''').fetchall())
@@ -258,8 +259,8 @@ class Name(Menu):  # переход к окну "Имя"
                     self.edit_name = False
 
                 elif self.remove_name:
-                    if self.player_ID > 1:
-                        index = self.player_ID - 1
+                    if self.player_ID <= len(self.players):
+                        index = self.player_ID
 
                     else:
                         index = self.player_ID
@@ -346,18 +347,18 @@ class Name(Menu):  # переход к окну "Имя"
                 onRelease=self.delete_name_field
             )
 
-    def name_is_occupied(self):
+    def name_is_occupied(self, status):
         Button(
             screen,
-            round(width * 0.7),
+            round(width * 0.7) if status == 'new' else round(width * 0.1),
             round(height * 0.1),
             round(width * 0.2),
             round(height * 0.05),
-            colour='yellow', text='Это имя занято!' if self.new_name_status == 'repeat' else 'Пустое имя!',
+            colour='yellow', text='Это имя занято!' if self.name_status == 'repeat' else 'Пустое имя!',
             textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
         )
 
-        self.new_name_status = 'repeat'
+        self.name_status = 'repeat'
 
     def delete_name_field(self):
         delete_widgets()
@@ -370,7 +371,7 @@ class Name(Menu):  # переход к окну "Имя"
     def new_name(self):
         try:
             if not self.name_box.getText():
-                self.new_name_status = 'empty'
+                self.name_status = 'empty'
                 raise sqlite3.IntegrityError
 
             self.cursor.execute(f'''INSERT INTO Player(
@@ -385,16 +386,26 @@ class Name(Menu):  # переход к окну "Имя"
             self.change_data()
 
         except sqlite3.IntegrityError:
-            self.name_is_occupied()
+            self.name_is_occupied('new')
 
     def change_name(self):
-        self.cursor.execute(f'''UPDATE Player SET name = '{self.name_box.getText()}' WHERE id = {self.player_ID}''')
-        self.connection.commit()
-        self.update_data()
-        self.delete_name_field()
+        try:
+            if not self.name_box.getText():
+                self.name_status = 'empty'
+                raise sqlite3.IntegrityError
 
-        self.edit_name = True
-        self.change_data()
+            self.cursor.execute(f'''UPDATE Player SET name = '{self.name_box.getText()}' 
+                                    WHERE id = {self.player_ID}''')
+
+            self.connection.commit()
+            self.update_data()
+            self.delete_name_field()
+
+            self.edit_name = True
+            self.change_data()
+
+        except sqlite3.IntegrityError:
+            self.name_is_occupied('change')
 
     def delete_name(self):
         if len(self.players) == 1:
@@ -414,15 +425,15 @@ class Name(Menu):  # переход к окну "Имя"
             self.connection.commit()
             self.update_data()
 
-            for name_id in range(1, len(self.players_data) + 1):
+            for name_id in range(1, len(self.players) + 1):
                 self.cursor.execute(f'''UPDATE Player SET id = {name_id} 
-                                   WHERE id = {self.players_data[name_id - 1][0]}''')
+                                   WHERE Name = "{self.players[name_id - 1]}"''')
 
-                self.connection.commit()
-                self.update_data()
+            self.connection.commit()
+            self.update_data()
 
-                self.remove_name = True
-                self.change_data()
+            self.remove_name = True
+            self.change_data()
 
 
 class Options(Menu):
@@ -620,7 +631,7 @@ class TopPlayers(Menu):
 class Ship(pygame.sprite.Sprite):  # класс корабля (общий для игрока и противников)
     def __init__(self, group, explosion_group):
         super().__init__(group)
-        self.health = 0  # количество брони
+        self.health = 0  # количество здоровья
         self.speed = 0  # скорость корабля
         self.explosion_group = explosion_group
 
@@ -636,7 +647,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
                     coordinates, group, explosion_group)
 
     def get_damage(self, damage):  # функция получения урона
-        self.health -= damage
+        self.health = self.health - damage if self.health - damage > 0 else 0
 
     def explode(self):
         self.kill()
@@ -1075,9 +1086,15 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.025, width * 0.03, height * 0.03,
                                       placeholderText=0, colour='grey', textColour='black', fontSize=24)
         # количество снарядов
+
         self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.075, width * 0.03, height * 0.03,
                                            placeholderText=0, colour='grey', textColour='black', fontSize=24)
         # количество торпед
+
+        self.health_box = TextBox(screen, width * 0.525, height * 0.04, width * 0.05, height * 0.03,
+                                  placeholderText=0, colour='grey', textColour='black', fontSize=24)
+        # здоровье
+
         self.end_event = pygame.USEREVENT + 3  # конец игры (пауза)
         self.update_time = pygame.USEREVENT + 2  # событие обновления экрана
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
@@ -1164,9 +1181,11 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                         self.spawn_enemy()  # спавнит корабль врага
 
                     pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+
                 if self.player.total_ammo == 0 and self.player.total_torpedoes == 0 and len(self.bonus_group) < 3:
                     Bonuses(random.uniform(0.1, 0.9) * width, 0.35 * height, self.bonus_group, random.randint(1, 41))
                     # если у игрока нет снарядов, приходит поддержка
+
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
                     screen.blit(self.torpedo_image, (width * 0.015, height * 0.072))
@@ -1197,6 +1216,9 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
                     self.total_torpedoes_box.setText(self.player.total_torpedoes)
                     self.total_torpedoes_box.draw()
+
+                    self.health_box.setText(f'{self.player.health}/{self.player.max_health}')
+                    self.health_box.draw()
 
                     self.player.gun_bar.draw()
                     self.player.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
@@ -1309,7 +1331,7 @@ class Endgame(Window):
         self.music_list = [int(j) for j in range(4)]
         random.shuffle(self.music_list)
 
-        pygame.mixer.music.set_volume(music_volume / 3)
+        pygame.mixer.music.set_volume(music_volume)
 
         pygame.mixer.music.load(f'Audio/Defeat{self.music_list[0]}.mp3')
         pygame.mixer.music.play()
@@ -1343,6 +1365,10 @@ class Endgame(Window):
 
     def to_menu(self):
         self.switch()
+
+        pygame.mixer.music.load('Audio/Background.mp3')
+        pygame.mixer.music.play(-1)
+
         self.Win = MainWindow()
 
     def to_survival(self):
@@ -1382,15 +1408,15 @@ if __name__ == '__main__':
 
     screen = pygame.display.set_mode(size)
 
-    pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play(-1)
-
     explosion = pygame.mixer.Sound('Audio/explosion.mp3')
     torpedo = pygame.mixer.Sound('Audio/torpedo.mp3')
     gun = pygame.mixer.Sound('Audio/gun.mp3')
 
     clock = pygame.time.Clock()
     clock.tick(FPS)
+
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play(-1)
 
     score = 0
     explosion_anim = []
