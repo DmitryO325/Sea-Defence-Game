@@ -263,7 +263,11 @@ class Name(Menu):  # переход к окну "Имя"
                         index = self.player_ID
 
                 else:
-                    index = self.players.index(self.names_combobox.getSelected()) + 1
+                    if self.names_combobox.getSelected() is not None:
+                        index = self.players.index(self.names_combobox.getSelected()) + 1
+
+                    else:
+                        index = self.player_ID
 
             except ValueError:
                 pass
