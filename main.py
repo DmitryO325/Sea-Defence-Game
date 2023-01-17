@@ -40,12 +40,12 @@ class Window:
 class Menu(Window):
     def __init__(self):
         super().__init__()
-        print(cursor1.execute('select * from player').fetchone())
+        print(cursor.execute('select * from player').fetchone())
         global player, playerID, width, height, music_volume, audio_volume, screen, size
         playerID = int(open("Data/last_player.txt").readline())
-        player, width, height, music_volume, audio_volume = cursor1.execute(f'SELECT name, width, height, music, '
-                                                                            f'Sounds FROM Player '
-                                                                            f'WHERE ID={playerID}').fetchone()
+        player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,'
+                                                                           f' Sounds FROM Player '
+                                                                           f'WHERE ID={playerID}').fetchone()
         size = width, height
         screen = pygame.display.set_mode(size)
         pygame.mixer.music.set_volume(music_volume)
@@ -130,6 +130,13 @@ class Name(Menu):  # переход к окну "Имя"
         self.width_value = 0
         self.names_combobox = None
         self.name_box = None
+
+        self.new_name_status = 'repeat'
+        self.create_name = self.edit_name = self.remove_name = False
+
+        self.players_data = tuple(cursor.execute('''SELECT * FROM Player''').fetchall())
+        self.players = tuple(map(lambda x: x[1], self.players_data))
+
         self.draw_buttons()
         self.show()
 
@@ -155,11 +162,11 @@ class Name(Menu):  # переход к окну "Имя"
     def draw_buttons(self):
         self.names_combobox = Dropdown(
             screen,
-            round(0.35 * width),
-            round(0.1 * height),
-            round(0.3 * width),
-            round(0.05 * height),
-            name=player, choices=self.names, fontSize=54,
+            round(width * 0.35),
+            round(height * 0.1),
+            round(width * 0.3),
+            round(height * 0.05),
+            name=player, choices=self.players, fontSize=54,
             colour='green', hoverColour='yellow', pressedColour='red'
         )
 
@@ -207,6 +214,17 @@ class Name(Menu):  # переход к окну "Имя"
             onRelease=self.show_changed_name
         )
 
+        Button(  # кнопка для удаления профиля
+            screen,
+            round(width * 0.35),
+            round(height * 0.03),
+            round(width * 0.3),
+            round(height * 0.05),
+            colour='red', text='Удалить профиль', textColour='yellow',
+            fontSize=32, hoverColour='grey', pressedColour='darkgrey',
+            onRelease=self.show_deleted_name
+        )
+
     def show_new_name(self):
         self.is_change = 'new'
         self.delete_name_field()
@@ -215,93 +233,199 @@ class Name(Menu):  # переход к окну "Имя"
         self.is_change = 'change'
         self.delete_name_field()
 
+    def show_deleted_name(self):
+        self.is_change = 'delete'
+        self.delete_name_field()
+
     def to_menu(self):
         self.switch()
         self.Win = MainWindow()
 
     def change_data(self):
-        with open('preferences.txt', 'r+') as file:
+        with open('Data/last_player.txt', 'r+') as file:
             try:
-                self.file_data[0] = f'name = {self.names.index(self.names_combobox.getSelected()) + 1}'
+                if self.create_name:
+                    index = len(self.players)
+                    self.create_name = False
+
+                elif self.edit_name:
+                    index = playerID
+                    self.edit_name = False
+
+                elif self.remove_name:
+                    if playerID > 1:
+                        index = playerID - 1
+
+                    else:
+                        index = playerID
+
+                else:
+                    if self.names_combobox.getSelected() is not None:
+                        index = self.players.index(self.names_combobox.getSelected()) + 1
+
+                    else:
+                        index = playerID
 
             except ValueError:
                 pass
 
-            file.writelines(self.file_data)
+            file.writelines(str(index))
 
         self.to_menu()
 
     def draw_field(self):
+        if self.is_change in {'new', 'change'}:
+            Button(
+                screen,
+                round(width * (0.7 - self.width_value)),
+                round(height * 0.1),
+                round(width * 0.2),
+                round(height * 0.05),
+                colour='yellow', text='Введите имя' if self.is_change == 'new' else 'Измените имя',
+                textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
+            )
+
+            self.name_box = TextBox(
+                screen,
+                round(width * (0.7 - self.width_value)),
+                round(height * 0.18),
+                round(width * 0.2),
+                round(height * 0.05),
+                fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
+            )
+
+            Button(
+                screen,
+                round(width * (0.7 - self.width_value)),
+                round(height * 0.26),
+                round(width * 0.2),
+                round(height * 0.05),
+                colour='blue', text='Создать' if self.is_change == 'new' else 'Изменить', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.new_name if self.is_change == 'new' else self.change_name
+            )
+
+            Button(
+                screen,
+                round(width * (0.7 - self.width_value)),
+                round(height * 0.34),
+                round(width * 0.2),
+                round(height * 0.05),
+                colour='blue', text='Отмена', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name_field
+            )
+
+            self.width_value = 0
+
+        else:
+            Button(
+                screen,
+                round(width * 0.07),
+                round(height * 0.83),
+                round(width * 0.26),
+                round(height * 0.05),
+                colour='blue', text=f'Удалить {self.players[playerID - 1]}', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name
+            )
+
+            Button(
+                screen,
+                round(width * 0.07),
+                round(height * 0.9),
+                round(width * 0.26),
+                round(height * 0.05),
+                colour='blue', text='Отмена', textColour='yellow',
+                fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+                onRelease=self.delete_name_field
+            )
+
+    def name_is_occupied(self):
         Button(
             screen,
-            round(width * (0.7 - self.width_value)),
+            round(width * 0.7),
             round(height * 0.1),
             round(width * 0.2),
             round(height * 0.05),
-            colour='yellow', text='Введите имя' if self.is_change == 'new' else 'Измените имя',
+            colour='yellow', text='Это имя занято!' if self.new_name_status == 'repeat' else 'Пустое имя!',
             textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
         )
 
-        self.name_box = TextBox(
-            screen,
-            round(width * (0.7 - self.width_value)),
-            round(height * 0.18),
-            round(width * 0.2),
-            round(height * 0.05),
-            fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
-        )
-
-        Button(
-            screen,
-            round(width * (0.7 - self.width_value)),
-            round(height * 0.26),
-            round(width * 0.2),
-            round(height * 0.05),
-            colour='blue', text='Создать' if self.is_change == 'new' else 'Изменить', textColour='yellow',
-            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.new_name if self.is_change == 'new' else self.change_name
-        )
-
-        Button(
-            screen,
-            round(width * (0.7 - self.width_value)),
-            round(height * 0.34),
-            round(width * 0.2),
-            round(height * 0.05),
-            colour='blue', text='Отмена', textColour='yellow',
-            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
-            onRelease=self.delete_name_field
-        )
-
-        self.width_value = 0
+        self.new_name_status = 'repeat'
 
     def delete_name_field(self):
         delete_widgets()
         self.draw_buttons()
 
     def update_data(self):
-        self.names_data = tuple(cursor.execute('''SELECT * FROM data''').fetchall())
-        self.names = tuple(map(lambda x: x[1], self.names_data))
+        self.players_data = tuple(cursor.execute('''SELECT * FROM Player''').fetchall())
+        self.players = tuple(map(lambda x: x[1], self.players_data))
 
     def new_name(self):
-        cursor.execute(f'''INSERT INTO data(name, level) VALUES ('{self.name_box.getText()}', 1)''')
+        try:
+            if not self.name_box.getText():
+                self.new_name_status = 'empty'
+                raise sqlite3.IntegrityError
+
+            cursor.execute(f'''INSERT INTO Player(
+            Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
+            ('{self.name_box.getText()}', {width}, {height}, {FPS}, 0, {music_volume}, {audio_volume}, 0)''')
+
+            connection.commit()
+            self.update_data()
+            self.delete_name_field()
+
+            self.create_name = True
+            self.change_data()
+
+        except sqlite3.IntegrityError:
+            self.name_is_occupied()
+
+    def change_name(self):
+        cursor.execute(f'''UPDATE Player SET name = '{self.name_box.getText()}' WHERE id = {playerID}''')
         connection.commit()
         self.update_data()
         self.delete_name_field()
 
-    def change_name(self):
-        cursor.execute(f'''UPDATE data SET name = '{self.name_box.getText()}' WHERE id = {self.name_id}''')
-        connection.commit()
-        self.update_data()
-        self.delete_name_field()
+        self.edit_name = True
+        self.change_data()
+
+    def delete_name(self):
+        if len(self.players) == 1:
+            Button(
+                screen,
+                round(width * 0.35),
+                round(height * 0.03),
+                round(width * 0.3),
+                round(height * 0.05),
+                colour='red', text='Невозможно, так как больше нет аккаунтов!', textColour='yellow',
+                fontSize=32, hoverColour='grey', pressedColour='darkgrey',
+                onRelease=self.show_deleted_name
+            )
+
+        else:
+            cursor.execute(f'''DELETE FROM Player WHERE id = {playerID}''')
+            connection.commit()
+            self.update_data()
+
+            for name_id in range(1, len(self.players_data) + 1):
+                cursor.execute(f'''UPDATE Player SET id = {name_id} 
+                                   WHERE id = {self.players_data[name_id - 1][0]}''')
+
+                connection.commit()
+                self.update_data()
+
+                self.remove_name = True
+                self.change_data()
 
 
 class Options(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
-        self.music_value = cursor1.execute(f'SELECT Music FROM Player WHERE ID={playerID}').fetchone()[0]
-        self.sounds_value = cursor1.execute(f'SELECT Sounds FROM Player WHERE ID={playerID}').fetchone()[0]
+        self.music_value = cursor.execute(f'SELECT Music FROM Player WHERE ID={playerID}').fetchone()[0]
+        self.sounds_value = cursor.execute(f'SELECT Sounds FROM Player WHERE ID={playerID}').fetchone()[0]
         self.music_box = TextBox(screen, round(0.52 * width) + 200, round(0.2 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость музыки
         self.music_slider = Slider(screen, round(0.2 * width) + 200, round(0.2 * height), round(width * 0.3), 30,
@@ -342,7 +466,7 @@ class Options(Window):
                 self.new_width, self.new_height = self.combobox1.getSelected()
             if self.combobox2.getSelected():
                 clock.tick(int(self.combobox2.getSelected()))
-                cursor1.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
+                cursor.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
             screen.blit(self.picture, (0, 0))
             screen.blit(header_text, (round(0.4 * width), round(0.05 * height)))
             for num in range(len(functions_texts)):
@@ -379,15 +503,15 @@ class Options(Window):
         try:
             if self.new_width != width:
                 size = width, height = self.new_width, self.new_height
-                cursor1.execute(f'UPDATE Player SET Width={self.new_width}, Height={self.new_height} '
-                                f'WHERE ID={playerID}')
-                connection1.commit()
+                cursor.execute(f'UPDATE Player SET Width={self.new_width}, Height={self.new_height} '
+                               f'WHERE ID={playerID}')
+                connection.commit()
                 pygame.display.set_mode(size)
         except AttributeError:
             pass
-        cursor1.execute(f'UPDATE Player SET Music={self.music_value}, Sounds={self.sounds_value} '
-                        f'WHERE ID={playerID}')
-        connection1.commit()
+        cursor.execute(f'UPDATE Player SET Music={self.music_value}, Sounds={self.sounds_value} '
+                       f'WHERE ID={playerID}')
+        connection.commit()
         self.Win = MainWindow()
 
 
@@ -398,7 +522,7 @@ class TopPlayers(Menu):
         screen.blit(self.picture, (0, 0))
         font = pygame.font.Font(None, 150)
         text = font.render('Топ игроков', True, (255, 0, 0))
-        self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+        self.info = cursor.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
         self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.3 * width, 0.075 * height,
                                  name='Всего набранных очков',
                                  choices=['Всего набранных очков', 'Набрано очков за игру', 'Время боя'],
@@ -415,13 +539,13 @@ class TopPlayers(Menu):
                     self.running = False
             if self.combobox.getSelected():
                 if self.combobox.getSelected() == 1 and self.choice != 1:
-                    self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+                    self.info = cursor.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
                     self.draw_widgets()
                 elif self.combobox.getSelected() == 2 and self.choice != 2:
-                    self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score DESC').fetchall()
+                    self.info = cursor.execute('SELECT Player_name, Score FROM Game ORDER BY Score DESC').fetchall()
                     self.draw_widgets()
                 elif self.combobox.getSelected() == 3 and self.choice != 3:
-                    self.info = cursor1.execute('SELECT Player_name, Time FROM Game ORDER BY Time DESC').fetchall()
+                    self.info = cursor.execute('SELECT Player_name, Time FROM Game ORDER BY Time DESC').fetchall()
                     self.info = sorted(self.info, key=lambda x: [int(j) for j in x[1].split(':')], reverse=True)
                     self.draw_widgets()
                 self.choice = self.combobox.getSelected()
@@ -877,7 +1001,7 @@ class Bullet(pygame.sprite.Sprite):
 class Battlefield(Window):  # игровое поле, унаследовано от WINDOW
     def __init__(self):
         super().__init__()
-        print(cursor1.execute('SELECT * FROM GAME').fetchall())
+        print(cursor.execute('SELECT * FROM GAME').fetchall())
         self.music_number = 0  # номер саундтрека
         global score
 
@@ -1053,13 +1177,13 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                 if event.type == self.end_event:
                     pygame.mixer.music.stop()
                     try:
-                        new_id = cursor1.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
+                        new_id = cursor.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
                     except IndexError:
                         new_id = 0
                     time = ''.join(self.timer.text)
-                    cursor1.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
-                    cursor1.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+Score WHERE ID={playerID}')
-                    connection1.commit()
+                    cursor.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
+                    cursor.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+Score WHERE ID={playerID}')
+                    connection.commit()
                     self.switch()  # переход на конечный экран
                     self.Win = Endgame()
 
@@ -1149,10 +1273,14 @@ class Endgame(Window):
     def __init__(self):
         super().__init__()
         self.Win = None
+
         self.running = True
         self.music_number = 0
         pygame.mouse.set_visible(True)
         self.background = pygame.transform.scale(load_image('Взрыв корабля.png'), screen.get_size())
+
+        font = pygame.font.Font(None, 150)
+        self.text = font.render(f'Ваш счёт: {score}!', True, (150, 50, 0))
 
         self.music_list = [int(j) for j in range(4)]
         random.shuffle(self.music_list)
@@ -1163,21 +1291,58 @@ class Endgame(Window):
         pygame.mixer.music.play()
         self.music_number += 1
 
+        self.draw_buttons()
         self.show()
+
+    def draw_buttons(self):
+        Button(  # кнопка "Переиграть"
+            screen,
+            round(width * 0.5),
+            round(height * 0.85),
+            round(width * 0.2),
+            round(height * 0.1),
+            colour='blue', text='Переиграть', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_survival
+        )
+
+        Button(  # кнопка "В меню"
+            screen,
+            round(width * 0.75),
+            round(height * 0.85),
+            round(width * 0.2),
+            round(height * 0.1),
+            colour='blue', text='В меню', textColour='yellow',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+    def to_menu(self):
+        self.switch()
+        self.Win = MainWindow()
+
+    def to_survival(self):
+        self.switch()
+        self.Win = Battlefield()
 
     def show(self):
         while self.running:
+            events = pygame.event.get()
+
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Defeat{self.music_list[self.music_number]}.mp3')
                 pygame.mixer.music.play()
                 self.music_number += 1
                 self.music_number %= 4
 
-            for event in pygame.event.get():
+            for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
 
             screen.blit(self.background, (0, 0))
+            screen.blit(self.text, (0.5 * width - self.text.get_width() // 2, round(0.1 * height)))
+
+            pygame_widgets.update(events)
             pygame.display.flip()
 
 
@@ -1188,9 +1353,7 @@ if __name__ == '__main__':
     pygame.display.set_icon(icon)
     player = None
     playerID = None
-    connection1 = sqlite3.connect('Data/database.sqlite')
-    cursor1 = connection1.cursor()
-    connection = sqlite3.connect('Data/name.sqlite')
+    connection = sqlite3.connect('Data/database.sqlite')
     cursor = connection.cursor()
     FPS = 60
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
