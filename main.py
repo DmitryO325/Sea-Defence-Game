@@ -41,10 +41,11 @@ class Menu(Window):
     def __init__(self):
         super().__init__()
         print(cursor1.execute('select * from player').fetchone())
-        global player, playerID, width, height, music_volume, screen, size
+        global player, playerID, width, height, music_volume, audio_volume, screen, size
         playerID = int(open("Data/last_player.txt").readline())
-        player, width, height, music_volume = cursor1.execute(f'SELECT name, width, height, music FROM Player '
-                                                              f'WHERE ID={playerID}').fetchone()
+        player, width, height, music_volume, audio_volume = cursor1.execute(f'SELECT name, width, height, music, '
+                                                                            f'Sounds FROM Player '
+                                                                            f'WHERE ID={playerID}').fetchone()
         size = width, height
         screen = pygame.display.set_mode(size)
         pygame.mixer.music.set_volume(music_volume)
@@ -371,6 +372,9 @@ class Options(Window):
 
     def to_menu(self):
         global width, height, size
+        global music_volume, audio_volume
+        music_volume = self.music_slider.getValue()
+        audio_volume = self.sound_slider.getValue()
         self.switch()
         try:
             if self.new_width != width:
@@ -394,25 +398,33 @@ class TopPlayers(Menu):
         screen.blit(self.picture, (0, 0))
         font = pygame.font.Font(None, 150)
         text = font.render('Топ игроков', True, (255, 0, 0))
-        self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.3 * width, 0.075 * height, name='Тип рекорда',
+        self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+        self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.3 * width, 0.075 * height,
+                                 name='Всего набранных очков',
                                  choices=['Всего набранных очков', 'Набрано очков за игру', 'Время боя'],
                                  values=[1, 2, 3],
                                  borderRadius=3, colour='blue', fontSize=50,
-                                 direction='down', textHAlign='centre', textColour='yellow')
-        self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
+                                 direction='down', textHAlign='centre',
+                                 textColour='yellow')
         self.draw_widgets()
+        self.choice = 1
         while self.running:
             events = pygame.event.get()
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
             if self.combobox.getSelected():
-                if self.combobox.getSelected() == 1:
-                    self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score').fetchall()
-                elif self.combobox.getSelected() == 2:
-                    self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
-                else:
-                    self.info = cursor1.execute('SELECT Player_name, Time FROM Game ORDER BY Time').fetchall()
+                if self.combobox.getSelected() == 1 and self.choice != 1:
+                    self.info = cursor1.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+                    self.draw_widgets()
+                elif self.combobox.getSelected() == 2 and self.choice != 2:
+                    self.info = cursor1.execute('SELECT Player_name, Score FROM Game ORDER BY Score DESC').fetchall()
+                    self.draw_widgets()
+                elif self.combobox.getSelected() == 3 and self.choice != 3:
+                    self.info = cursor1.execute('SELECT Player_name, Time FROM Game ORDER BY Time DESC').fetchall()
+                    self.info = sorted(self.info, key=lambda x: [int(j) for j in x[1].split(':')], reverse=True)
+                    self.draw_widgets()
+                self.choice = self.combobox.getSelected()
             screen.blit(self.picture, (0, 0))
             screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
             pygame_widgets.update(events)
@@ -424,7 +436,7 @@ class TopPlayers(Menu):
                 try:
                     cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height,
                                   0.45 * width, 0.07 * height, textHAlign='center',
-                                  textColour='blue', fontSize=40,
+                                  textColour='gold', fontSize=40,
                                   borderColour='black', borderThickness=5, text=f'{self.info[h][w]}')
                 except IndexError:
                     cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height,
@@ -457,8 +469,8 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
         self.explosion_group = explosion_group
 
     def torpedo_shot(self, coordinates, group, explosion_group):  # функция запуска торпеды
+        torpedo.set_volume(audio_volume)
         torpedo.play()
-
         if self.rect.x + self.rect.w * 0.5 > coordinates[0]:
             Torpedo(round(self.rect.x + 0.1 * self.rect.w), round(0.93 * self.rect.y),
                     coordinates, group, explosion_group)
@@ -513,6 +525,7 @@ class Player(Ship):  # класс игрока
         # шкала готовности торпеды
 
     def gun_shot(self, coordinates, group, explosion_group):  # функция выстрела из пушки
+        gun.set_volume(audio_volume)
         gun.play()  # звук выстрела из пушки
         Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coordinates, group, explosion_group)
         # запуск снаряда
@@ -864,11 +877,11 @@ class Bullet(pygame.sprite.Sprite):
 class Battlefield(Window):  # игровое поле, унаследовано от WINDOW
     def __init__(self):
         super().__init__()
-
+        print(cursor1.execute('SELECT * FROM GAME').fetchall())
         self.music_number = 0  # номер саундтрека
         global score
 
-        self.music_list = [int(j) for j in range(18)]
+        self.music_list = [int(j) for j in range(17)]
         random.shuffle(self.music_list)  # перемешка музыки
 
         pygame.mixer.music.set_volume(music_volume / 3)  # музыка тише звуков (при максимумах)
@@ -967,6 +980,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                             if sprite:
                                 Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
                                 sprite.kill()  # взрыв мины
+                                gun.set_volume(audio_volume)
+                                print(audio_volume)
                                 gun.play()
                                 score += 50
 
@@ -1037,6 +1052,14 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
                 if event.type == self.end_event:
                     pygame.mixer.music.stop()
+                    try:
+                        new_id = cursor1.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
+                    except IndexError:
+                        new_id = 0
+                    time = ''.join(self.timer.text)
+                    cursor1.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
+                    cursor1.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+Score WHERE ID={playerID}')
+                    connection1.commit()
                     self.switch()  # переход на конечный экран
                     self.Win = Endgame()
 
@@ -1085,6 +1108,7 @@ class Explosion(pygame.sprite.Sprite):  # класс взрыва
         self.last_update = pygame.time.get_ticks()
         self.frame_rate = 50  # время смены кадров в мс
         group.add(self)
+        explosion.set_volume(audio_volume)
         explosion.play()  # звук взрыва
 
     def update(self):
@@ -1159,6 +1183,9 @@ class Endgame(Window):
 
 if __name__ == '__main__':
     pygame.init()
+    pygame.display.set_caption('Морская оборона')
+    icon = pygame.image.load('Images/Icon.png')
+    pygame.display.set_icon(icon)
     player = None
     playerID = None
     connection1 = sqlite3.connect('Data/database.sqlite')
@@ -1178,7 +1205,7 @@ if __name__ == '__main__':
     explosion = pygame.mixer.Sound('Audio/explosion.mp3')
     torpedo = pygame.mixer.Sound('Audio/torpedo.mp3')
     gun = pygame.mixer.Sound('Audio/gun.mp3')
-    score = 1
+    score = 0
     explosion_anim = []
     for i in range(1, 17):
         filename = 'взрыв торпеды{}.png'.format(i)
