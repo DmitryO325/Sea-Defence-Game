@@ -756,8 +756,7 @@ class Player(Ship):  # класс игрока
             self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
                                            lambda: 1, completedColour='blue', incompletedColour='red')
 
-        if self.health <= 0:
-            self.health_bar.hide()  # взрыв корабля
+        if self.health <= 0:  # взрыв корабля
             self.explode()
 
 
