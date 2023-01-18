@@ -605,16 +605,6 @@ class Shipyard(Menu):
         font = pygame.font.Font(None, 150)
         text = font.render('Верфь', True, (255, 0, 0))
         self.money = cursor.execute(f'SELECT money FROM Player WHERE ID={playerID}').fetchone()[0]
-        self.money_box = Button(
-            screen,
-            round(width * 0.8),
-            round(height * 0.05),
-            round(width * 0.15),
-            round(height * 0.07),
-            colour='blue', text=str(self.money), textColour='gold',
-            fontSize=50, radius=10, borderThickness=5, borderColour='red'
-        )
-        self.money_box.disable()
         self.draw_widgets()
         while self.running:
             events = pygame.event.get()
@@ -627,6 +617,16 @@ class Shipyard(Menu):
             pygame.display.flip()
 
     def draw_widgets(self):
+        a = Button(
+            screen,
+            round(width * 0.8),
+            round(height * 0.05),
+            round(width * 0.15),
+            round(height * 0.07),
+            colour='blue', text=str(self.money), textColour='gold',
+            fontSize=50, radius=10, borderThickness=5, borderColour='red'
+        )
+        a.disable()
         Button(
             screen,
             round(width * 0.7),
@@ -642,7 +642,6 @@ class Shipyard(Menu):
                 (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас'),
                 (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка')]
         for h in range(4):
-            print(info[h][1])
             Button(screen, 0.8 * width, 0.18 * height * (h + 1), 0.15 * width, 0.1 * height, colour='blue',
                    text='Улучшить', textColour='gold',
                    fontSize=50, radius=10, borderThickness=3, borderColour='silver',
@@ -656,16 +655,52 @@ class Shipyard(Menu):
             a.disable()
 
     def upgrade_armor(self):
-        pass
+        price = {100: 1000, 200: 2000, 300: 4000, 400: 8000}
+        if self.armor != 500:
+            if self.money >= price[self.armor]:
+                self.money -= price[self.armor]
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.armor]}')
+                cursor.execute(f'UPDATE Ship SET HP=HP+100 WHERE Player_ID={playerID}')
+                connection.commit()
+                pygame_widgets.WidgetHandler._widgets = []
+                self.armor += 100
+                self.draw_widgets()
 
     def upgrade_speed(self):
-        pass
+        price = {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000}
+        if self.speed != 5:
+            if self.money >= price[self.speed]:
+                self.money -= price[self.speed]
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.speed]}')
+                cursor.execute(f'UPDATE Ship SET Speed=Speed+0.5 WHERE Player_ID={playerID}')
+                connection.commit()
+                pygame_widgets.WidgetHandler._widgets = []
+                self.speed += 0.5
+                self.draw_widgets()
 
     def upgrade_gun(self):
-        pass
+        price = {2: 1000, 3: 2000, 4: 4000, 5: 8000}
+        if self.ammo != 6:
+            if self.money >= price[self.ammo]:
+                self.money -= price[self.ammo]
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.ammo]}')
+                cursor.execute(f'UPDATE Ship SET Ammo=Ammo+1 WHERE Player_ID={playerID}')
+                connection.commit()
+                pygame_widgets.WidgetHandler._widgets = []
+                self.ammo += 1
+                self.draw_widgets()
 
     def upgrade_reload(self):
-        pass
+        price = {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000}
+        if self.reload != 700:
+            if self.money >= price[self.reload]:
+                self.money -= price[self.reload]
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.reload]}')
+                cursor.execute(f'UPDATE Ship SET Reload=Reload-250 WHERE Player_ID={playerID}')
+                connection.commit()
+                pygame_widgets.WidgetHandler._widgets = []
+                self.reload -= 250
+                self.draw_widgets()
 
     def to_menu(self):
         self.switch()
@@ -702,7 +737,9 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
 class Player(Ship):  # класс игрока
     def __init__(self, group, explosion_group):
         super().__init__(group, explosion_group)
-
+        self.ammo1, self.health, self.reload_time, self.speed = cursor.execute(f'SELECT Ammo, HP, Reload, '
+                                                                               f'Speed FROM SHIP WHERE '
+                                                                               f'Player_ID={playerID}').fetchone()
         self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.25, height * 0.25))
 
         self.rect = self.image.get_rect()
@@ -713,7 +750,6 @@ class Player(Ship):  # класс игрока
 
         self.reloading = False  # перезарядка орудия
 
-        self.health = 100  # количество здоровья игрока
         self.max_health = self.health  # для вывода количества оставшегося здоровья на шкале
 
         self.total_ammo = 100  # первичный арсенал
@@ -726,9 +762,9 @@ class Player(Ship):  # класс игрока
         self.start = pygame.time.get_ticks()  # начало перезарядки пушки
         self.torpedo_time = pygame.time.get_ticks()  # начало подготовки торпеды
 
-        self.ammo = 3  # количество снарядов в отсеке пушки
+        self.ammo = self.ammo1  # количество снарядов в отсеке пушки
         self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                   lambda: self.ammo / 3, completedColour='blue', incompletedColour='red')
+                                   lambda: self.ammo / self.ammo1, completedColour='blue', incompletedColour='red')
         # шкала со снарядами пушки
         self.torpedo = 1  # торпеда готова к пуску
         self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
@@ -743,20 +779,21 @@ class Player(Ship):  # класс игрока
         self.ammo -= 1  # изменения в арсенале
         self.total_ammo -= 1
 
-        if self.ammo == 0:  # автоматическое начало перезарядки
+        if self.ammo == 0 and not self.total_ammo == 0:  # автоматическое начало перезарядки
             self.start_reloading()
 
     def start_reloading(self):
         self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                   lambda: (pygame.time.get_ticks() - self.start + self.ammo * 1700) / (1700 * 3),
+                                   lambda: (pygame.time.get_ticks() - self.start + self.ammo *
+                                            self.reload_time) / (self.reload_time * self.ammo1),
                                    completedColour='yellow', incompletedColour='red')
         # обновление шкалы пушки
         self.start = pygame.time.get_ticks()  # замер времени
         self.reloading = True  # начало перезарядки
 
     def reload(self):
-        if self.total_ammo >= 3:
-            self.ammo = 3  # восполнение боекомплекта
+        if self.total_ammo >= self.ammo1:
+            self.ammo = self.ammo1  # восполнение боекомплекта
         else:
             self.ammo = self.total_ammo
 
@@ -789,23 +826,24 @@ class Player(Ship):  # класс игрока
 
     def update(self, *args):  # изменение местоположения
         if self.right:
-            self.rect.x += 4
+            self.rect.x += self.speed
 
             if self.rect.x + self.rect.w > width:
                 self.rect.x = width - self.rect.w
 
         if self.left:
-            self.rect.x -= 4
+            self.rect.x -= self.speed
 
             if self.rect.x < 0:
                 self.rect.x = 0
 
-        if pygame.time.get_ticks() - self.start >= 1700 * min((3 - self.ammo), self.total_ammo) and self.reloading:
+        if pygame.time.get_ticks() - self.start >= self.reload_time * min((self.ammo1 - self.ammo),
+                                                                          self.total_ammo) and self.reloading:
             self.reloading = False  # завершение зарядки орудия
             self.reload()
 
             self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                       lambda: self.ammo / 3,
+                                       lambda: self.ammo / self.ammo1,
                                        completedColour='blue', incompletedColour='red')
             # обновление шкалы пушки
         if pygame.time.get_ticks() - self.torpedo_time >= 3000:
@@ -817,7 +855,8 @@ class Player(Ship):  # класс игрока
         self.gun_bar.draw()
         self.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
         self.health_bar.draw()
-
+        if not self.reloading and self.ammo == 0 and not self.total_ammo == 0:
+            self.start_reloading()
         if self.health <= 0:
             self.health_bar.hide()  # взрыв корабля
             self.explode()
@@ -1174,7 +1213,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                         self.player.right = False
 
                     if (event.key in {pygame.K_SPACE, pygame.K_w, pygame.K_UP} and
-                            0 < self.player.ammo < 3 and not self.player.reloading):
+                            0 < self.player.ammo < self.player.ammo1 and not self.player.reloading
+                            and not self.player.total_ammo == 0):
                         self.player.start_reloading()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -1212,7 +1252,6 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     if self.delta_time > 5:
                         self.delta_time -= 0.5
                         pygame.time.set_timer(self.harder, 60000, 1)
-                        print('1')
 
                 if event.type == self.random_event:  # генерация случайного события
                     if len(self.ship_group) != 1:
