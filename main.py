@@ -1,5 +1,4 @@
 import pygame
-import pygame_widgets
 
 from pygame_widgets.button import Button
 from pygame_widgets.slider import Slider
@@ -7,7 +6,9 @@ from pygame_widgets.textbox import TextBox
 from pygame_widgets.dropdown import Dropdown
 from pygame_widgets.progressbar import ProgressBar
 
+import pygame_widgets
 import sqlite3
+import sys
 import os
 import math
 import random
@@ -35,16 +36,15 @@ class Window:
 class Menu(Window):
     def __init__(self):
         super().__init__()
+        global player, playerID, width, height, music_volume, audio_volume, screen, size
 
-        global width, height, music_volume
+        playerID = int(open("Data/last_player.txt").readline())
+        player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,'
+                                                                           f' Sounds FROM Player '
+                                                                           f'WHERE ID={playerID}').fetchone()
 
-        self.connection = sqlite3.connect('Data/database.sqlite')
-        self.cursor = self.connection.cursor()
-
-        self.player_ID = int(open("Data/last_player.txt").readline())
-        self.player, width, height, music_volume = self.cursor.execute(f'SELECT name, width, height, music FROM Player '
-                                                                       f'WHERE ID={self.player_ID}').fetchone()
-
+        size = width, height
+        screen = pygame.display.set_mode(size)
         pygame.mixer.music.set_volume(music_volume)
 
         self.picture = pygame.image.load('Главное меню.png')
@@ -58,20 +58,17 @@ class MainWindow(Menu):
 
         font = pygame.font.Font(None, 150)
         text = font.render('Морская оборона', True, (255, 0, 0))
-
         self.draw_buttons()
 
         screen.blit(self.picture, (0, 0))
 
         while self.running:
             events = pygame.event.get()
-
             for event in events:
                 if event.type == pygame.QUIT:
                     self.running = False
 
-            screen.blit(text, (0.5 * width - text.get_width() // 2, round(0.1 * height)))
-
+            screen.blit(text, (0.5 * width - text.get_width() // 2, round(0.05 * height)))
             pygame_widgets.update(events)
             pygame.display.flip()
 
@@ -88,9 +85,7 @@ class MainWindow(Menu):
 
     def to_shipyard(self):
         self.switch()
-
-    def to_level_mode(self):
-        self.switch()
+        self.Win = Shipyard()
 
     def to_survival(self):
         self.switch()
@@ -101,15 +96,15 @@ class MainWindow(Menu):
         self.Win = Name()
 
     def draw_buttons(self):
-        button_titles = ('name', 'Выживание', 'Кампания', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
-        button_functions = (self.to_survival, self.to_level_mode, self.to_shipyard,
+        button_titles = ('name', 'Выживание', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
+        button_functions = (self.to_survival, self.to_shipyard,
                             self.to_top_players, self.to_options, self.end)
 
-        for number_of_button in range(1, 7):  # создание кнопок для перехода в другие окна
+        for number_of_button in range(1, 6):  # создание кнопок для перехода в другие окна
             Button(
                 screen,
                 round(width * 0.3),
-                round(height * (0.06 + number_of_button * 0.13 + 0.03)),
+                round(height * (0.06 + number_of_button * 0.15)),
                 round(width * 0.4),
                 round(height * 0.1),
                 colour='blue', text=button_titles[number_of_button], textColour='yellow',
@@ -123,7 +118,7 @@ class MainWindow(Menu):
             round(height * 0.03),
             round(width * 0.15),
             round(height * 0.05),
-            colour='lightblue', text=self.player, onRelease=self.to_name, fontSize=36
+            colour='lightblue', text=player, onRelease=self.to_name, fontSize=36
         )
 
 
@@ -140,7 +135,7 @@ class Name(Menu):  # переход к окну "Имя"
 
         self.create_name = self.edit_name = self.remove_name = False
 
-        self.players_data = tuple(self.cursor.execute('''SELECT * FROM Player''').fetchall())
+        self.players_data = tuple(cursor.execute('''SELECT * FROM Player''').fetchall())
         self.players = tuple(map(lambda x: x[1], self.players_data))
 
         self.draw_buttons()
@@ -172,7 +167,7 @@ class Name(Menu):  # переход к окну "Имя"
             round(height * 0.1),
             round(width * 0.3),
             round(height * 0.05),
-            name=self.player, choices=self.players, fontSize=54,
+            name=player, choices=self.players, fontSize=54,
             colour='green', hoverColour='yellow', pressedColour='red'
         )
 
@@ -255,22 +250,22 @@ class Name(Menu):  # переход к окну "Имя"
                     self.create_name = False
 
                 elif self.edit_name:
-                    index = self.player_ID
+                    index = playerID
                     self.edit_name = False
 
                 elif self.remove_name:
-                    if self.player_ID <= len(self.players):
-                        index = self.player_ID
+                    if playerID <= len(self.players):
+                        index = playerID
 
                     else:
-                        index = self.player_ID
+                        index = playerID - 1
 
                 else:
                     if self.names_combobox.getSelected() is not None:
                         index = self.players.index(self.names_combobox.getSelected()) + 1
 
                     else:
-                        index = self.player_ID
+                        index = playerID
 
             except ValueError:
                 pass
@@ -331,7 +326,7 @@ class Name(Menu):  # переход к окну "Имя"
                 round(height * 0.83),
                 round(width * 0.26),
                 round(height * 0.05),
-                colour='blue', text=f'Удалить {self.players[self.player_ID - 1]}', textColour='yellow',
+                colour='blue', text=f'Удалить {self.players[playerID - 1]}', textColour='yellow',
                 fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
                 onRelease=self.delete_name
             )
@@ -365,7 +360,7 @@ class Name(Menu):  # переход к окну "Имя"
         self.draw_buttons()
 
     def update_data(self):
-        self.players_data = tuple(self.cursor.execute('''SELECT * FROM Player''').fetchall())
+        self.players_data = tuple(cursor.execute('''SELECT * FROM Player''').fetchall())
         self.players = tuple(map(lambda x: x[1], self.players_data))
 
     def new_name(self):
@@ -374,11 +369,11 @@ class Name(Menu):  # переход к окну "Имя"
                 self.name_status = 'empty'
                 raise sqlite3.IntegrityError
 
-            self.cursor.execute(f'''INSERT INTO Player(
+            cursor.execute(f'''INSERT INTO Player(
             Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
-            ('{self.name_box.getText()}', {width}, {height}, {FPS}, 0, {music_volume}, {audio_volume}, 0)''')
+            ('{self.name_box.getText()}', {full_width}, {full_height}, 120, 0, 1, 1, 0)''')
 
-            self.connection.commit()
+            connection.commit()
             self.update_data()
             self.delete_name_field()
 
@@ -394,10 +389,10 @@ class Name(Menu):  # переход к окну "Имя"
                 self.name_status = 'empty'
                 raise sqlite3.IntegrityError
 
-            self.cursor.execute(f'''UPDATE Player SET name = '{self.name_box.getText()}' 
-                                    WHERE id = {self.player_ID}''')
+            cursor.execute(f'''UPDATE Player SET name = '{self.name_box.getText()}' 
+                                    WHERE id = {playerID}''')
+            connection.commit()
 
-            self.connection.commit()
             self.update_data()
             self.delete_name_field()
 
@@ -421,15 +416,15 @@ class Name(Menu):  # переход к окну "Имя"
             )
 
         else:
-            self.cursor.execute(f'''DELETE FROM Player WHERE id = {self.player_ID}''')
-            self.connection.commit()
+            cursor.execute(f'''DELETE FROM Player WHERE id = {playerID}''')
+            connection.commit()
             self.update_data()
 
             for name_id in range(1, len(self.players) + 1):
-                self.cursor.execute(f'''UPDATE Player SET id = {name_id} 
+                cursor.execute(f'''UPDATE Player SET id = {name_id} 
                                    WHERE Name = "{self.players[name_id - 1]}"''')
 
-            self.connection.commit()
+            connection.commit()
             self.update_data()
 
             self.remove_name = True
@@ -441,8 +436,8 @@ class Options(Menu):
         super().__init__()
         self.Win = None
 
-        self.music_value = self.cursor.execute(f'SELECT Music FROM Player WHERE ID={self.player_ID}').fetchone()[0]
-        self.sounds_value = self.cursor.execute(f'SELECT Sounds FROM Player WHERE ID={self.player_ID}').fetchone()[0]
+        self.music_value = cursor.execute(f'SELECT Music FROM Player WHERE ID={playerID}').fetchone()[0]
+        self.sounds_value = cursor.execute(f'SELECT Sounds FROM Player WHERE ID={playerID}').fetchone()[0]
 
         self.music_box = TextBox(screen, round(0.52 * width) + 200, round(0.2 * height) - 10, 60,
                                  50, fontSize=35)  # отображает громкость музыки
@@ -492,12 +487,13 @@ class Options(Menu):
                     self.running = False
 
             self.update_sliders()
+
             if self.combobox1.getSelected():
                 self.new_width, self.new_height = self.combobox1.getSelected()
 
             if self.combobox2.getSelected():
                 clock.tick(int(self.combobox2.getSelected()))
-                self.cursor.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
+                cursor.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
 
             screen.blit(self.picture, (0, 0))
             screen.blit(header_text, (round(0.4 * width), round(0.05 * height)))
@@ -520,9 +516,9 @@ class Options(Menu):
     def draw_buttons(self):
         Button(
             screen,
-            round(width * 0.75),
+            round(width * 0.7),
             round(height * (0.7 + 1 * 0.15)),
-            round(width * 0.2),
+            round(width * 0.25),
             round(height * 0.1),
             colour='blue', text='В главное меню', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
@@ -530,25 +526,30 @@ class Options(Menu):
         )
 
     def to_menu(self):
-        global width, height, size
+        global width, height, size, music_volume, audio_volume
+
+        music_volume = self.music_slider.getValue()
+        audio_volume = self.sound_slider.getValue()
+
         self.switch()
 
         try:
             if self.new_width != width:
                 size = width, height = self.new_width, self.new_height
-                self.cursor.execute(f'UPDATE Player SET Width={self.new_width}, Height={self.new_height} '
-                                    f'WHERE ID={self.player_ID}')
 
-                self.connection.commit()
+                cursor.execute(f'UPDATE Player SET Width={self.new_width}, Height={self.new_height} '
+                               f'WHERE ID={playerID}')
+                connection.commit()
+
                 pygame.display.set_mode(size)
 
         except AttributeError:
             pass
 
-        self.cursor.execute(f'UPDATE Player SET Music={self.music_value}, Sounds={self.sounds_value} '
-                            f'WHERE ID={self.player_ID}')
+        cursor.execute(f'UPDATE Player SET Music={self.music_value}, Sounds={self.sounds_value} '
+                       f'WHERE ID={playerID}')
+        connection.commit()
 
-        self.connection.commit()
         self.Win = MainWindow()
 
 
@@ -562,14 +563,18 @@ class TopPlayers(Menu):
         font = pygame.font.Font(None, 150)
         text = font.render('Топ игроков', True, (255, 0, 0))
 
-        self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.3 * width, 0.075 * height, name='Тип рекорда',
+        self.info = cursor.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+
+        self.combobox = Dropdown(screen, 0.05 * width, 0.1 * height, 0.4 * width, 0.075 * height,
+                                 name='Всего набранных очков',
                                  choices=['Всего набранных очков', 'Набрано очков за игру', 'Время боя'],
                                  values=[1, 2, 3],
                                  borderRadius=3, colour='blue', fontSize=50,
-                                 direction='down', textHAlign='centre', textColour='yellow')
+                                 direction='down', textHAlign='centre',
+                                 textColour='yellow')
 
-        self.info = self.cursor.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
         self.draw_widgets()
+        self.choice = 1
 
         while self.running:
             events = pygame.event.get()
@@ -579,18 +584,23 @@ class TopPlayers(Menu):
                     self.running = False
 
             if self.combobox.getSelected():
-                if self.combobox.getSelected() == 1:
-                    self.info = self.cursor.execute('SELECT Name, Score FROM Player ORDER BY Score').fetchall()
+                if self.combobox.getSelected() == 1 and self.choice != 1:
+                    self.info = cursor.execute('SELECT Name, Score FROM Player ORDER BY Score DESC').fetchall()
+                    self.draw_widgets()
 
-                elif self.combobox.getSelected() == 2:
-                    self.info = self.cursor.execute('SELECT Player_name, Score FROM Game ORDER BY Score').fetchall()
+                elif self.combobox.getSelected() == 2 and self.choice != 2:
+                    self.info = cursor.execute('SELECT Player_name, Score FROM Game ORDER BY Score DESC').fetchall()
+                    self.draw_widgets()
 
-                else:
-                    self.info = self.cursor.execute('SELECT Player_name, Time FROM Game ORDER BY Time').fetchall()
+                elif self.combobox.getSelected() == 3 and self.choice != 3:
+                    self.info = cursor.execute('SELECT Player_name, Time FROM Game ORDER BY Time DESC').fetchall()
+                    self.info = sorted(self.info, key=lambda x: [int(j) for j in x[1].split(':')], reverse=True)
+                    self.draw_widgets()
+
+                self.choice = self.combobox.getSelected()
 
             screen.blit(self.picture, (0, 0))
-            screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
-
+            screen.blit(text, (width * 0.7 - text.get_width() // 2, round(0.05 * height)))
             pygame_widgets.update(events)
             pygame.display.flip()
 
@@ -600,7 +610,7 @@ class TopPlayers(Menu):
                 try:
                     cell = Button(screen, 0.05 * width + 0.45 * w * width, 0.2 * height + h * 0.07 * height,
                                   0.45 * width, 0.07 * height, textHAlign='center',
-                                  textColour='blue', fontSize=40,
+                                  textColour='gold', fontSize=40,
                                   borderColour='black', borderThickness=5, text=f'{self.info[h][w]}')
 
                 except IndexError:
@@ -614,9 +624,9 @@ class TopPlayers(Menu):
 
         Button(
             screen,
-            round(width * 0.75),
+            round(width * 0.7),
             round(height * 0.91),
-            round(width * 0.2),
+            round(width * 0.25),
             round(height * 0.07),
             colour='blue', text='В главное меню', textColour='yellow',
             fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
@@ -628,14 +638,154 @@ class TopPlayers(Menu):
         self.Win = MainWindow()
 
 
+class Shipyard(Menu):
+    def __init__(self):
+        super().__init__()
+        self.armor, self.ammo, self.speed, self.reload = cursor.execute(f'SELECT HP, Ammo, Speed, Reload FROM SHIP '
+                                                                        f'WHERE Player_ID={playerID}').fetchone()
+        self.Win = None
+
+        screen.blit(self.picture, (0, 0))
+
+        font = pygame.font.Font(None, 150)
+        text = font.render('Верфь', True, (255, 0, 0))
+
+        self.money = cursor.execute(f'SELECT money FROM Player WHERE ID={playerID}').fetchone()[0]
+        self.draw_widgets()
+
+        while self.running:
+            events = pygame.event.get()
+
+            for event in events:
+                if event.type == pygame.QUIT:
+                    self.running = False
+
+            screen.blit(self.picture, (0, 0))
+            screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
+            pygame_widgets.update(events)
+            pygame.display.flip()
+
+    def draw_widgets(self):
+        money_button = Button(
+            screen,
+            round(width * 0.8),
+            round(height * 0.05),
+            round(width * 0.15),
+            round(height * 0.07),
+            colour='blue', text=str(self.money), textColour='gold',
+            fontSize=50, radius=10, borderThickness=5, borderColour='red'
+        )
+
+        money_button.disable()
+
+        Button(
+            screen,
+            round(width * 0.7),
+            round(height * 0.91),
+            round(width * 0.25),
+            round(height * 0.07),
+            colour='blue', text='В главное меню', textColour='yellow', textHAlign='center',
+            fontSize=50, radius=10, hoverColour='darkblue', pressedColour='darkgrey',
+            onRelease=self.to_menu
+        )
+
+        info = [(self.upgrade_armor, self.armor / 500, 'Броня'),
+                (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость'),
+                (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас'),
+                (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка')]
+
+        for h in range(4):
+            Button(screen, 0.8 * width, 0.18 * height * (h + 1), 0.15 * width, 0.1 * height, colour='blue',
+                   text='Улучшить', textColour='gold',
+                   fontSize=50, radius=10, borderThickness=3, borderColour='silver',
+                   onClick=info[h][0], textHAlign='center', hoverColour='darkblue', hoverBorderColour='silver')
+
+            ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (h + 1), 0.5 * width, 0.04 * height,
+                        progress=lambda: info[h][1], completedColour='green', incompletedColour='grey')
+
+            a = Button(screen, 0.05 * width, 0.18 * height * (h + 1), 0.2 * width, 0.1 * height, colour='blue',
+                       text=str(info[h][2]), textColour='gold',
+                       fontSize=50, radius=10, borderThickness=3, borderColour='silver',
+                       onClick=info[h][0], textHAlign='center')
+
+            a.disable()
+
+    def upgrade_armor(self):
+        price = {100: 1000, 200: 2000, 300: 4000, 400: 8000}
+        if self.armor != 500:
+            if self.money >= price[self.armor]:
+                self.money -= price[self.armor]
+
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.armor]}')
+                cursor.execute(f'UPDATE Ship SET HP=HP+100 WHERE Player_ID={playerID}')
+                connection.commit()
+
+                pygame_widgets.WidgetHandler._widgets = []
+
+                self.armor += 100
+                self.draw_widgets()
+
+    def upgrade_speed(self):
+        price = {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000}
+        if self.speed != 5:
+            if self.money >= price[self.speed]:
+                self.money -= price[self.speed]
+
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.speed]}')
+                cursor.execute(f'UPDATE Ship SET Speed=Speed+0.5 WHERE Player_ID={playerID}')
+                connection.commit()
+
+                pygame_widgets.WidgetHandler._widgets = []
+
+                self.speed += 0.5
+                self.draw_widgets()
+
+    def upgrade_gun(self):
+        price = {2: 1000, 3: 2000, 4: 4000, 5: 8000}
+        if self.ammo != 6:
+            if self.money >= price[self.ammo]:
+                self.money -= price[self.ammo]
+
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.ammo]}')
+                cursor.execute(f'UPDATE Ship SET Ammo=Ammo+1 WHERE Player_ID={playerID}')
+                connection.commit()
+
+                pygame_widgets.WidgetHandler._widgets = []
+
+                self.ammo += 1
+                self.draw_widgets()
+
+    def upgrade_reload(self):
+        price = {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000}
+
+        if self.reload != 700:
+            if self.money >= price[self.reload]:
+                self.money -= price[self.reload]
+
+                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.reload]}')
+                cursor.execute(f'UPDATE Ship SET Reload=Reload-250 WHERE Player_ID={playerID}')
+                connection.commit()
+
+                pygame_widgets.WidgetHandler._widgets = []
+
+                self.reload -= 250
+                self.draw_widgets()
+
+    def to_menu(self):
+        self.switch()
+        self.Win = MainWindow()
+
+
 class Ship(pygame.sprite.Sprite):  # класс корабля (общий для игрока и противников)
     def __init__(self, group, explosion_group):
         super().__init__(group)
-        self.health = 0  # количество здоровья
+
+        self.health = 0  # количество брони
         self.speed = 0  # скорость корабля
         self.explosion_group = explosion_group
 
     def torpedo_shot(self, coordinates, group, explosion_group):  # функция запуска торпеды
+        torpedo.set_volume(audio_volume)
         torpedo.play()
 
         if self.rect.x + self.rect.w * 0.5 > coordinates[0]:
@@ -647,7 +797,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
                     coordinates, group, explosion_group)
 
     def get_damage(self, damage):  # функция получения урона
-        self.health = self.health - damage if self.health - damage > 0 else 0
+        self.health -= damage
 
     def explode(self):
         self.kill()
@@ -658,18 +808,20 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
 class Player(Ship):  # класс игрока
     def __init__(self, group, explosion_group):
         super().__init__(group, explosion_group)
+        self.max_ammo, self.health, self.reload_time, self.speed = cursor.execute(f'SELECT Ammo, HP, Reload, '
+                                                                               f'Speed FROM SHIP WHERE '
+                                                                               f'Player_ID={playerID}').fetchone()
 
         self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.25, height * 0.25))
 
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = round(0.375 * width), round(0.78 * height)
+        self.rect.x, self.rect.y = round(0.35 * width), round(0.78 * height)
 
         self.left = False  # плывём влево
         self.right = False  # плывём вправо
 
         self.reloading = False  # перезарядка орудия
 
-        self.health = 100  # количество здоровья игрока
         self.max_health = self.health  # для вывода количества оставшегося здоровья на шкале
 
         self.total_ammo = 100  # первичный арсенал
@@ -682,36 +834,42 @@ class Player(Ship):  # класс игрока
         self.start = pygame.time.get_ticks()  # начало перезарядки пушки
         self.torpedo_time = pygame.time.get_ticks()  # начало подготовки торпеды
 
-        self.ammo = 3  # количество снарядов в отсеке пушки
+        self.ammo = self.max_ammo  # количество снарядов в отсеке пушки
         self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                   lambda: self.ammo / 3, completedColour='blue', incompletedColour='red')
+                                   lambda: self.ammo / self.max_ammo, completedColour='blue', incompletedColour='red')
         # шкала со снарядами пушки
+
         self.torpedo = 1  # торпеда готова к пуску
-        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
                                        lambda: 1, completedColour='blue', incompletedColour='red')
         # шкала готовности торпеды
 
     def gun_shot(self, coordinates, group, explosion_group):  # функция выстрела из пушки
+        gun.set_volume(audio_volume)
         gun.play()  # звук выстрела из пушки
+
         Bullet(round(self.rect.centerx), round(0.98 * self.rect.y), coordinates, group, explosion_group)
         # запуск снаряда
+
         self.ammo -= 1  # изменения в арсенале
         self.total_ammo -= 1
 
-        if self.ammo == 0:  # автоматическое начало перезарядки
+        if self.ammo == 0 and not self.total_ammo == 0:  # автоматическое начало перезарядки
             self.start_reloading()
 
     def start_reloading(self):
         self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                   lambda: (pygame.time.get_ticks() - self.start + self.ammo * 1700) / (1700 * 3),
+                                   lambda: (pygame.time.get_ticks() - self.start + self.ammo *
+                                            self.reload_time) / (self.reload_time * self.max_ammo),
                                    completedColour='yellow', incompletedColour='red')
         # обновление шкалы пушки
+
         self.start = pygame.time.get_ticks()  # замер времени
         self.reloading = True  # начало перезарядки
 
     def reload(self):
-        if self.total_ammo >= 3:
-            self.ammo = 3  # восполнение боекомплекта
+        if self.total_ammo >= self.max_ammo:
+            self.ammo = self.max_ammo  # восполнение боекомплекта
 
         else:
             self.ammo = self.total_ammo
@@ -720,6 +878,7 @@ class Player(Ship):  # класс игрока
         self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
                                        lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
                                        completedColour='yellow', incompletedColour='red')
+
         # обновление шкалы торпеды
         self.total_torpedoes -= 1
 
@@ -745,32 +904,42 @@ class Player(Ship):  # класс игрока
 
     def update(self, *args):  # изменение местоположения
         if self.right:
-            self.rect.x += 4
+            self.rect.x += self.speed
 
             if self.rect.x + self.rect.w > width:
                 self.rect.x = width - self.rect.w
 
         if self.left:
-            self.rect.x -= 4
+            self.rect.x -= self.speed
 
             if self.rect.x < 0:
                 self.rect.x = 0
 
-        if pygame.time.get_ticks() - self.start >= 1700 * min((3 - self.ammo), self.total_ammo) and self.reloading:
+        if pygame.time.get_ticks() - self.start >= self.reload_time * min((self.max_ammo - self.ammo),
+                                                                          self.total_ammo) and self.reloading:
             self.reloading = False  # завершение зарядки орудия
             self.reload()
 
             self.gun_bar = ProgressBar(screen, width * 0.05, height * 0.03, width * 0.2, height * 0.02,
-                                       lambda: self.ammo / 3,
+                                       lambda: self.ammo / self.max_ammo,
                                        completedColour='blue', incompletedColour='red')
             # обновление шкалы пушки
+
         if pygame.time.get_ticks() - self.torpedo_time >= 3000:
             self.torpedo_reload()  # завершение подготовки торпеды
 
-            self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+            self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
                                            lambda: 1, completedColour='blue', incompletedColour='red')
 
-        if self.health <= 0:  # взрыв корабля
+        self.gun_bar.draw()
+        self.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
+        self.health_bar.draw()
+
+        if not self.reloading and self.ammo == 0 and not self.total_ammo == 0:
+            self.start_reloading()
+
+        if self.health <= 0:
+            self.health_bar.hide()  # взрыв корабля
             self.explode()
 
 
@@ -784,7 +953,6 @@ class Enemy(Ship):  # класс врага
         self.ship_type = ship_type
         self.health = self.info[0]  # здоровье
         self.points = self.info[-1]  # очки за потопление
-
         self.event = 0  # выпадение бонуса при потоплении
 
         if ship_type == 'Канонерка':
@@ -808,6 +976,7 @@ class Enemy(Ship):  # класс врага
                                                                           'Крейсер2.png'))),
                                                 (width * 0.1, height * 0.04))
         # спрайт корабля
+
         self.shot_time = random.randint(6, 10)  # таймер первого выстрела
         self.time = pygame.time.get_ticks()  # время прошлого выстрела
         self.rect = self.image.get_rect()  # получение квадрата спрайта
@@ -820,16 +989,16 @@ class Enemy(Ship):  # класс врага
             self.rect.x = width
             self.image = pygame.transform.flip(self.image, True, False)
         # спавн корабля
+
         self.x = self.rect.x  # отслеживание координат корабля по оси абсцисс
         self.max_health = self.health  # аналогично в Player
         self.rect.y = height * 0.25  # координаты по оси ординат
+
         self.health_bar = ProgressBar(screen, self.rect.x, self.rect.y - 0.04 * height, self.rect.w, 0.01 * height,
                                       lambda: self.health / self.max_health, completedColour='red')  # шкала здоровья
         self.health_bar.draw()
 
-    def update(self, player: Player, torpedo_group, bonus_group, explosion_group):  # перемещение корабля
-        global score
-
+    def update(self, player_ship: Player, torpedo_group, bonus_group, explosion_group):  # перемещение корабля
         if self.direction == 0:
             self.x += self.params[self.ship_type][1]
 
@@ -843,7 +1012,7 @@ class Enemy(Ship):  # класс врага
 
         if (pygame.time.get_ticks() - self.time) / 1000 >= self.shot_time:  # время запуска торпеды
             Torpedo(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
-                    (player.rect.x + random.uniform(0.4, 0.6) * player.rect.w, player.rect.y),
+                    (player_ship.rect.x + random.uniform(0.4, 0.6) * player_ship.rect.w, player_ship.rect.y),
                     torpedo_group, explosion_group)
 
             self.shot_time = random.randint(8, 12)  # новое время запуска
@@ -853,6 +1022,7 @@ class Enemy(Ship):  # класс врага
             self.kill()  # при выходе за горизонт
 
         if self.health <= 0:
+            global score
             score += self.points
 
             self.kill()
@@ -862,6 +1032,7 @@ class Enemy(Ship):  # класс врага
             if 1 <= self.event <= 70:
                 Bonuses(self.rect.centerx, self.rect.y + self.rect.w * 0.5,
                         bonus_group, self.event)
+
             # Анимация взрыва
             self.explode()
             self.health_bar.hide()  # исчезновение шкалы здоровья
@@ -925,14 +1096,18 @@ class Bonuses(pygame.sprite.Sprite):
 class Torpedo(pygame.sprite.Sprite):
     def __init__(self, x: int, y: int, point_coordinates: tuple, group, explosion_group):
         super().__init__(group)
+
         self.x = x  # координаты торпеды
         self.y = y
         self.x1, self.y1 = point_coordinates
+
         self.image = pygame.transform.scale(load_image('torpedo1.png'), (round(width * 0.01), round(height * 0.12)))
         # изображение спрайта
+
         try:
             self.angle = math.ceil(math.degrees(math.atan((self.y1 - self.y) / (self.x - self.x1))))
             # первичный угол поворота спрайта
+
             if self.x > self.x1 and self.y > self.y1:
                 self.angle += 180
 
@@ -990,8 +1165,10 @@ class Bullet(pygame.sprite.Sprite):
         self.x = x  # координаты снаряда
         self.y = y
         self.x1, self.y1 = point_coordinates
+
         self.image = pygame.transform.scale(load_image('Bullet.png'), (round(width * 0.006), round(height * 0.01)))
         # изображение снаряда
+
         try:
             self.angle = math.floor(math.degrees  # угол поворота
                                     (math.atan(abs((self.y1 - self.y) / (self.x - round(width * 0.025) - self.x1)))))
@@ -1041,9 +1218,8 @@ class Bullet(pygame.sprite.Sprite):
 class Battlefield(Window):  # игровое поле, унаследовано от WINDOW
     def __init__(self):
         super().__init__()
-        self.Win = None
-
         self.music_number = 0  # номер саундтрека
+
         global score
 
         self.music_list = [int(j) for j in range(18)]
@@ -1054,7 +1230,6 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         pygame.mixer.music.load(f'Audio/Battle{self.music_list[0]}.mp3')
         pygame.mixer.music.play()  # начало проигрывания трека
         self.music_number += 1
-
         self.start_time = pygame.time.get_ticks()  # начало таймера игры
 
         score = 0
@@ -1077,30 +1252,30 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         self.cursor = Cursor()  # курсор
         self.other.add(self.cursor)
 
-        self.score = TextBox(screen, 0.85 * width, 0.05 * height, 0.05 * width, 0.04 * height,  # счёт
+        self.score = TextBox(screen, 0.85 * width, 0.07 * height, 0.06 * width, 0.05 * height,  # счёт
                              placeholderText=0, colour='grey', textColour='black', fontSize=36)
 
-        self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.05 * width, 0.04 * height,
+        self.timer = TextBox(screen, 0.85 * width, 0.01 * height, 0.06 * width, 0.05 * height,
                              placeholderText=0, colour='grey', textColour='black', fontSize=36)  # время игры
 
-        self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.025, width * 0.03, height * 0.03,
+        self.total_ammo_box = TextBox(screen, width * 0.27, height * 0.01, width * 0.03, height * 0.05,
                                       placeholderText=0, colour='grey', textColour='black', fontSize=24)
         # количество снарядов
 
-        self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.075, width * 0.03, height * 0.03,
+        self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.07, width * 0.03, height * 0.05,
                                            placeholderText=0, colour='grey', textColour='black', fontSize=24)
         # количество торпед
-
-        self.health_box = TextBox(screen, width * 0.525, height * 0.04, width * 0.05, height * 0.03,
-                                  placeholderText=0, colour='grey', textColour='black', fontSize=24)
-        # здоровье
 
         self.end_event = pygame.USEREVENT + 3  # конец игры (пауза)
         self.update_time = pygame.USEREVENT + 2  # событие обновления экрана
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
+        self.harder = pygame.USEREVENT + 4  # событие увеличения скорости генерации
+
+        self.delta_time = 9
 
         pygame.time.set_timer(self.random_event, random.randint(1, 3) * 1000, 1)  # первое событие через 1-3 с
         pygame.time.set_timer(self.update_time, 10, 1)  # запуск события
+        pygame.time.set_timer(self.harder, 60000, 1)
 
         self.end = False  # конец игры
 
@@ -1112,6 +1287,7 @@ class Battlefield(Window):  # игровое поле, унаследовано 
             if not pygame.mixer.music.get_busy():
                 pygame.mixer.music.load(f'Audio/Battle{self.music_list[self.music_number]}.mp3')
                 pygame.mixer.music.play()
+
                 self.music_number += 1  # смена трека при завершении
                 self.music_number %= 18
 
@@ -1134,7 +1310,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                         self.player.right = False
 
                     if (event.key in {pygame.K_SPACE, pygame.K_w, pygame.K_UP} and
-                            0 < self.player.ammo < 3 and not self.player.reloading):
+                            0 < self.player.ammo < self.player.max_ammo and not self.player.reloading
+                            and not self.player.total_ammo == 0):
                         self.player.start_reloading()
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -1151,6 +1328,7 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                             if sprite:
                                 Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
                                 sprite.kill()  # взрыв мины
+                                gun.set_volume(audio_volume)
                                 gun.play()
                                 score += 50
 
@@ -1167,6 +1345,11 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     if event.button == 2 and 0 < self.player.ammo < 3 and not self.player.reloading:
                         self.player.start_reloading()
 
+                if event.type == self.harder:
+                    if self.delta_time > 5:
+                        self.delta_time -= 0.5
+                        pygame.time.set_timer(self.harder, 60000, 1)
+
                 if event.type == self.random_event:  # генерация случайного события
                     if len(self.ship_group) != 1:
                         generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
@@ -1180,7 +1363,9 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     else:
                         self.spawn_enemy()  # спавнит корабль врага
 
-                    pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+                    pygame.time.set_timer(self.random_event,
+                                          int(random.uniform(self.delta_time, self.delta_time + 5) * 1000), 1)
+                    # новое событие
 
                 if self.player.total_ammo == 0 and self.player.total_torpedoes == 0 and len(self.bonus_group) < 3:
                     Bonuses(random.uniform(0.1, 0.9) * width, 0.35 * height, self.bonus_group, random.randint(1, 41))
@@ -1188,8 +1373,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
                 if event.type == self.update_time:
                     screen.blit(self.background, (0, 0))
-                    screen.blit(self.torpedo_image, (width * 0.015, height * 0.072))
-                    screen.blit(self.ammo_image, (width * 0.025, height * 0.032))
+                    screen.blit(self.torpedo_image, (width * 0.015, height * 0.075))
+                    screen.blit(self.ammo_image, (width * 0.025, height * 0.03))
 
                     self.ship_group.update(self.player, self.torpedo_group, self.bonus_group, self.other)
                     self.torpedo_group.update(self.ship_group)
@@ -1217,22 +1402,27 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     self.total_torpedoes_box.setText(self.player.total_torpedoes)
                     self.total_torpedoes_box.draw()
 
-                    self.health_box.setText(f'{self.player.health}/{self.player.max_health}')
-                    self.health_box.draw()
-
-                    self.player.gun_bar.draw()
-                    self.player.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
-                    self.player.health_bar.draw()
-
                     self.other.draw(screen)
-
                     pygame.display.flip()
                     pygame.time.set_timer(self.update_time, 25, 1)
 
                 if event.type == self.end_event:
                     pygame.mixer.music.stop()
+
+                    try:
+                        new_id = cursor.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
+
+                    except IndexError:
+                        new_id = 0
+
+                    time = ''.join(self.timer.text)
+
+                    cursor.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
+                    cursor.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+{score} WHERE ID={playerID}')
+                    connection.commit()
+
                     self.switch()  # переход на конечный экран
-                    self.Win = Endgame()
+                    self.Win = Endgame(''.join(self.timer.text))
 
     def spawn_mine(self):  # функция спавна мины
         mine_width = random.uniform(0.05, 0.3)
@@ -1250,15 +1440,17 @@ class Mine(pygame.sprite.Sprite):  # класс мины
         super().__init__(group)
         self.size = mine_size  # размер мины
         self.image = pygame.transform.scale(load_image('Mine.png'), (0.03 * width, 0.03 * width))
+
         self.rect = self.image.get_rect()  # квадрат спрайта
         self.rect.x, self.rect.y = coordinates
         self.explosion_group = explosion_group  # группа для анимации взрыва
 
-    def update(self, player):
+    def update(self, player_ship: Player):
         self.rect.y += 0.005 * height  # перемещение мины
 
-        if pygame.sprite.collide_mask(self, player):  # проверка удара
-            player.get_damage(40)
+        if pygame.sprite.collide_mask(self, player_ship):  # проверка удара
+            player_ship.get_damage(40)
+
             Explosion((self.rect.centerx, self.rect.y + self.rect.h), (0.1 * width, 0.1 * height),
                       self.explosion_group)  # взрыв и исчезновение
             self.kill()
@@ -1269,16 +1461,22 @@ class Mine(pygame.sprite.Sprite):  # класс мины
 
 
 class Explosion(pygame.sprite.Sprite):  # класс взрыва
-    def __init__(self, center, size, group):
+    def __init__(self, center, explosion_size, group):
         pygame.sprite.Sprite.__init__(self)
-        self.size = size
+        self.size = explosion_size
         self.image = explosion_anim[0]  # первая картинка анимации
+
         self.rect = self.image.get_rect()
         self.rect.center = center
+
         self.frame = 0  # кадр
+
         self.last_update = pygame.time.get_ticks()
         self.frame_rate = 50  # время смены кадров в мс
+
         group.add(self)
+
+        explosion.set_volume(audio_volume)
         explosion.play()  # звук взрыва
 
     def update(self):
@@ -1301,8 +1499,10 @@ class Explosion(pygame.sprite.Sprite):  # класс взрыва
 class Cursor(pygame.sprite.Sprite):  # курсор игрока - вместо курсора мыши
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
+
         self.image = pygame.transform.scale(load_image('cursor.png'), (0.05 * width, 0.05 * width))  # картинка
         pygame.mouse.set_visible(False)  # сделать мышь невидимой
+
         self.rect = self.image.get_rect()
 
     def update(self):
@@ -1316,17 +1516,19 @@ class Cursor(pygame.sprite.Sprite):  # курсор игрока - вместо 
 
 
 class Endgame(Window):
-    def __init__(self):
+    def __init__(self, time):
         super().__init__()
         self.Win = None
 
         self.running = True
         self.music_number = 0
         pygame.mouse.set_visible(True)
+
         self.background = pygame.transform.scale(load_image('Взрыв корабля.png'), screen.get_size())
 
-        font = pygame.font.Font(None, 150)
-        self.text = font.render(f'Вас счёт: {score}!', True, (150, 50, 0))
+        font = pygame.font.Font(None, 200)
+        self.text1 = font.render(f'Ваш счёт: {score}', True, (150, 50, 0))
+        self.text2 = font.render(f'Ваше время: {time}', True, (150, 50, 0))
 
         self.music_list = [int(j) for j in range(4)]
         random.shuffle(self.music_list)
@@ -1390,7 +1592,9 @@ class Endgame(Window):
                     self.running = False
 
             screen.blit(self.background, (0, 0))
-            screen.blit(self.text, (0.75 * width - self.text.get_width() // 2, round(0.1 * height)))
+            screen.blit(self.text1, (0.5 * width - self.text1.get_width() // 2, round(0.05 * height)))
+            screen.blit(self.text2, (0.5 * width - self.text2.get_width() // 2,
+                                     round(0.1 * height + self.text1.get_height())))
 
             pygame_widgets.update(events)
             pygame.display.flip()
@@ -1399,24 +1603,35 @@ class Endgame(Window):
 if __name__ == '__main__':
     pygame.init()
 
+    pygame.display.set_caption('Морская оборона')
+    # icon = pygame.image.load('Images/Icon.png')
+    # pygame.display.set_icon(icon)
+
+    player = None
+    playerID = None
+
+    connection = sqlite3.connect('Data/database.sqlite')
+    cursor = connection.cursor()
+
+    FPS = 60
+
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
     size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
 
-    music_volume = 1
-    audio_volume = 1
-    FPS = 60
-
     screen = pygame.display.set_mode(size)
 
-    explosion = pygame.mixer.Sound('Audio/explosion.mp3')
-    torpedo = pygame.mixer.Sound('Audio/torpedo.mp3')
-    gun = pygame.mixer.Sound('Audio/gun.mp3')
+    pygame.mixer.music.load('Audio/Background.mp3')
+    pygame.mixer.music.play(-1)
 
     clock = pygame.time.Clock()
     clock.tick(FPS)
 
-    pygame.mixer.music.load('Audio/Background.mp3')
-    pygame.mixer.music.play(-1)
+    music_volume = 1
+    audio_volume = 1
+
+    explosion = pygame.mixer.Sound('Audio/explosion.mp3')
+    torpedo = pygame.mixer.Sound('Audio/torpedo.mp3')
+    gun = pygame.mixer.Sound('Audio/gun.mp3')
 
     score = 0
     explosion_anim = []
