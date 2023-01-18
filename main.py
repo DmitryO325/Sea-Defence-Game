@@ -8,7 +8,6 @@ from pygame_widgets.progressbar import ProgressBar
 
 import pygame_widgets
 import sqlite3
-import sys
 import os
 import math
 import random
@@ -373,6 +372,9 @@ class Name(Menu):  # переход к окну "Имя"
             Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
             ('{self.name_box.getText()}', {full_width}, {full_height}, 120, 0, 1, 1, 0)''')
 
+            cursor.execute(f'''INSERT INTO Ship(
+                        HP, Ammo, Speed, Reload) VALUES (100, 2, 3, 1700)''')
+
             connection.commit()
             self.update_data()
             self.delete_name_field()
@@ -420,9 +422,18 @@ class Name(Menu):  # переход к окну "Имя"
             connection.commit()
             self.update_data()
 
+            cursor.execute(f'''DELETE FROM Ship WHERE id = {playerID}''')
+            connection.commit()
+            self.update_data()
+
             for name_id in range(1, len(self.players) + 1):
+                old_id = self.players_data[name_id - 1][0]
+
                 cursor.execute(f'''UPDATE Player SET id = {name_id} 
                                    WHERE Name = "{self.players[name_id - 1]}"''')
+
+                cursor.execute(f'''UPDATE Ship SET id = {name_id}
+                                   WHERE id = {old_id}''')
 
             connection.commit()
             self.update_data()
@@ -601,6 +612,7 @@ class TopPlayers(Menu):
 
             screen.blit(self.picture, (0, 0))
             screen.blit(text, (width * 0.7 - text.get_width() // 2, round(0.05 * height)))
+
             pygame_widgets.update(events)
             pygame.display.flip()
 
@@ -641,8 +653,8 @@ class TopPlayers(Menu):
 class Shipyard(Menu):
     def __init__(self):
         super().__init__()
-        self.armor, self.ammo, self.speed, self.reload = cursor.execute(f'SELECT HP, Ammo, Speed, Reload FROM SHIP '
-                                                                        f'WHERE Player_ID={playerID}').fetchone()
+        self.data = self.health, self.speed, self.ammo, self.reload = cursor.execute(
+            f'SELECT HP, Speed, Ammo, Reload FROM Ship WHERE ID={playerID}').fetchone()
         self.Win = None
 
         screen.blit(self.picture, (0, 0))
@@ -651,6 +663,21 @@ class Shipyard(Menu):
         text = font.render('Верфь', True, (255, 0, 0))
 
         self.money = cursor.execute(f'SELECT money FROM Player WHERE ID={playerID}').fetchone()[0]
+
+        self.info = (
+            (self.upgrade_health, self.health / 500, 'Броня',
+             {100: 1000, 200: 2000, 300: 4000, 400: 8000, 500: 'max'}),
+
+            (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость',
+             {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000, 5: 'max'}),
+
+            (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас',
+             {2: 1000, 3: 2000, 4: 4000, 5: 8000, 6: 'max'}),
+
+            (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка',
+             {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000, 700: 'max'})
+        )
+
         self.draw_widgets()
 
         while self.running:
@@ -662,11 +689,12 @@ class Shipyard(Menu):
 
             screen.blit(self.picture, (0, 0))
             screen.blit(text, (width * 0.5 - text.get_width() // 2, round(0.01 * height)))
+
             pygame_widgets.update(events)
             pygame.display.flip()
 
     def draw_widgets(self):
-        money_button = Button(
+        Button(
             screen,
             round(width * 0.8),
             round(height * 0.05),
@@ -674,9 +702,7 @@ class Shipyard(Menu):
             round(height * 0.07),
             colour='blue', text=str(self.money), textColour='gold',
             fontSize=50, radius=10, borderThickness=5, borderColour='red'
-        )
-
-        money_button.disable()
+        ).disable()
 
         Button(
             screen,
@@ -689,84 +715,86 @@ class Shipyard(Menu):
             onRelease=self.to_menu
         )
 
-        info = [(self.upgrade_armor, self.armor / 500, 'Броня'),
-                (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость'),
-                (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас'),
-                (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка')]
+        # эти прогресс-бары почему-то работают некорректно в циклах... приходится извращаться
+        ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (0 + 1),
+                    0.5 * width, 0.04 * height, progress=lambda: self.info[0][1],
+                    completedColour='green', incompletedColour='grey')
+
+        ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (1 + 1),
+                    0.5 * width, 0.04 * height, progress=lambda: self.info[1][1],
+                    completedColour='green', incompletedColour='grey')
+
+        ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (2 + 1),
+                    0.5 * width, 0.04 * height, progress=lambda: self.info[2][1],
+                    completedColour='green', incompletedColour='grey')
+
+        ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (3 + 1),
+                    0.5 * width, 0.04 * height, progress=lambda: self.info[3][1],
+                    completedColour='green', incompletedColour='grey')
 
         for h in range(4):
             Button(screen, 0.8 * width, 0.18 * height * (h + 1), 0.15 * width, 0.1 * height, colour='blue',
-                   text='Улучшить', textColour='gold',
+                   text=f'Улучшить: {self.info[h][3][self.data[h]]}', textColour='gold',
                    fontSize=50, radius=10, borderThickness=3, borderColour='silver',
-                   onClick=info[h][0], textHAlign='center', hoverColour='darkblue', hoverBorderColour='silver')
+                   onClick=self.info[h][0], textHAlign='center', hoverColour='darkblue', hoverBorderColour='silver')
 
-            ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (h + 1), 0.5 * width, 0.04 * height,
-                        progress=lambda: info[h][1], completedColour='green', incompletedColour='grey')
+            Button(screen, 0.05 * width, 0.18 * height * (h + 1), 0.2 * width, 0.1 * height, colour='blue',
+                   text=str(self.info[h][2]), textColour='gold',
+                   fontSize=50, radius=10, borderThickness=3, borderColour='silver',
+                   onClick=self.info[h][0], textHAlign='center').disable()
 
-            a = Button(screen, 0.05 * width, 0.18 * height * (h + 1), 0.2 * width, 0.1 * height, colour='blue',
-                       text=str(info[h][2]), textColour='gold',
-                       fontSize=50, radius=10, borderThickness=3, borderColour='silver',
-                       onClick=info[h][0], textHAlign='center')
+    def upgrade_health(self):
+        if self.health != 500:
+            if self.money >= self.info[0][3][self.health]:
+                self.money -= self.info[0][3][self.health]
 
-            a.disable()
-
-    def upgrade_armor(self):
-        price = {100: 1000, 200: 2000, 300: 4000, 400: 8000}
-        if self.armor != 500:
-            if self.money >= price[self.armor]:
-                self.money -= price[self.armor]
-
-                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.armor]}')
-                cursor.execute(f'UPDATE Ship SET HP=HP+100 WHERE Player_ID={playerID}')
+                cursor.execute(f'UPDATE Player SET Money=Money-{self.info[0][3][self.health]}')
+                cursor.execute(f'UPDATE Ship SET HP=HP+100 WHERE ID={playerID}')
                 connection.commit()
 
-                pygame_widgets.WidgetHandler._widgets = []
+                delete_widgets()
 
-                self.armor += 100
+                self.health += 100
                 self.draw_widgets()
 
     def upgrade_speed(self):
-        price = {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000}
         if self.speed != 5:
-            if self.money >= price[self.speed]:
-                self.money -= price[self.speed]
+            if self.money >= self.info[1][3][self.speed]:
+                self.money -= self.info[1][3][self.speed]
 
-                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.speed]}')
-                cursor.execute(f'UPDATE Ship SET Speed=Speed+0.5 WHERE Player_ID={playerID}')
+                cursor.execute(f'UPDATE Player SET Money=Money-{self.info[1][3][self.speed]}')
+                cursor.execute(f'UPDATE Ship SET Speed=Speed+0.5 WHERE ID={playerID}')
                 connection.commit()
 
-                pygame_widgets.WidgetHandler._widgets = []
+                delete_widgets()
 
                 self.speed += 0.5
                 self.draw_widgets()
 
     def upgrade_gun(self):
-        price = {2: 1000, 3: 2000, 4: 4000, 5: 8000}
         if self.ammo != 6:
-            if self.money >= price[self.ammo]:
-                self.money -= price[self.ammo]
+            if self.money >= self.info[2][3][self.ammo]:
+                self.money -= self.info[2][3][self.ammo]
 
-                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.ammo]}')
-                cursor.execute(f'UPDATE Ship SET Ammo=Ammo+1 WHERE Player_ID={playerID}')
+                cursor.execute(f'UPDATE Player SET Money=Money-{self.info[2][3][self.ammo]}')
+                cursor.execute(f'UPDATE Ship SET Ammo=Ammo+1 WHERE ID={playerID}')
                 connection.commit()
 
-                pygame_widgets.WidgetHandler._widgets = []
+                delete_widgets()
 
                 self.ammo += 1
                 self.draw_widgets()
 
     def upgrade_reload(self):
-        price = {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000}
-
         if self.reload != 700:
-            if self.money >= price[self.reload]:
-                self.money -= price[self.reload]
+            if self.money >= self.info[3][3][self.reload]:
+                self.money -= self.info[3][3][self.reload]
 
-                cursor.execute(f'UPDATE Player SET Money=Money-{price[self.reload]}')
-                cursor.execute(f'UPDATE Ship SET Reload=Reload-250 WHERE Player_ID={playerID}')
+                cursor.execute(f'UPDATE Player SET Money=Money-{self.info[3][3][self.reload]}')
+                cursor.execute(f'UPDATE Ship SET Reload=Reload-250 WHERE ID={playerID}')
                 connection.commit()
 
-                pygame_widgets.WidgetHandler._widgets = []
+                delete_widgets()
 
                 self.reload -= 250
                 self.draw_widgets()
@@ -780,7 +808,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
     def __init__(self, group, explosion_group):
         super().__init__(group)
 
-        self.health = 0  # количество брони
+        self.health = 0  # количество здоровья
         self.speed = 0  # скорость корабля
         self.explosion_group = explosion_group
 
@@ -797,7 +825,7 @@ class Ship(pygame.sprite.Sprite):  # класс корабля (общий дл�
                     coordinates, group, explosion_group)
 
     def get_damage(self, damage):  # функция получения урона
-        self.health -= damage
+        self.health = self.health - damage if self.health - damage > 0 else 0
 
     def explode(self):
         self.kill()
@@ -809,13 +837,13 @@ class Player(Ship):  # класс игрока
     def __init__(self, group, explosion_group):
         super().__init__(group, explosion_group)
         self.max_ammo, self.health, self.reload_time, self.speed = cursor.execute(f'SELECT Ammo, HP, Reload, '
-                                                                               f'Speed FROM SHIP WHERE '
-                                                                               f'Player_ID={playerID}').fetchone()
+                                                                                  f'Speed FROM SHIP WHERE '
+                                                                                  f'ID={playerID}').fetchone()
 
         self.image = pygame.transform.scale(load_image('Player.png'), (width * 0.25, height * 0.25))
 
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = round(0.35 * width), round(0.78 * height)
+        self.rect.x, self.rect.y = round(0.375 * width), round(0.78 * height)
 
         self.left = False  # плывём влево
         self.right = False  # плывём вправо
@@ -875,7 +903,7 @@ class Player(Ship):  # класс игрока
             self.ammo = self.total_ammo
 
     def start_torpedo_reload(self):
-        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.08, width * 0.2, height * 0.02,
+        self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
                                        lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
                                        completedColour='yellow', incompletedColour='red')
 
@@ -939,7 +967,6 @@ class Player(Ship):  # класс игрока
             self.start_reloading()
 
         if self.health <= 0:
-            self.health_bar.hide()  # взрыв корабля
             self.explode()
 
 
@@ -1229,6 +1256,7 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
         pygame.mixer.music.load(f'Audio/Battle{self.music_list[0]}.mp3')
         pygame.mixer.music.play()  # начало проигрывания трека
+
         self.music_number += 1
         self.start_time = pygame.time.get_ticks()  # начало таймера игры
 
@@ -1265,6 +1293,10 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         self.total_torpedoes_box = TextBox(screen, width * 0.27, height * 0.07, width * 0.03, height * 0.05,
                                            placeholderText=0, colour='grey', textColour='black', fontSize=24)
         # количество торпед
+
+        self.health_box = TextBox(screen, width * 0.525, height * 0.02, width * 0.05, height * 0.05,
+                                  placeholderText=0, colour='grey', textColour='black', fontSize=24)
+        # здоровье
 
         self.end_event = pygame.USEREVENT + 3  # конец игры (пауза)
         self.update_time = pygame.USEREVENT + 2  # событие обновления экрана
@@ -1401,6 +1433,13 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
                     self.total_torpedoes_box.setText(self.player.total_torpedoes)
                     self.total_torpedoes_box.draw()
+
+                    self.health_box.setText(f'{self.player.health}/{self.player.max_health}')
+                    self.health_box.draw()
+
+                    self.player.gun_bar.draw()
+                    self.player.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
+                    self.player.health_bar.draw()
 
                     self.other.draw(screen)
                     pygame.display.flip()
@@ -1607,8 +1646,7 @@ if __name__ == '__main__':
     # icon = pygame.image.load('Images/Icon.png')
     # pygame.display.set_icon(icon)
 
-    player = None
-    playerID = None
+    player = playerID = 0
 
     connection = sqlite3.connect('Data/database.sqlite')
     cursor = connection.cursor()
