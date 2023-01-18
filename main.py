@@ -833,7 +833,6 @@ class Enemy(Ship):  # класс врага
         self.ship_type = ship_type
         self.health = self.info[0]  # здоровье
         self.points = self.info[-1]  # очки за потопление
-
         self.event = 0  # выпадение бонуса при потоплении
 
         if ship_type == 'Канонерка':
@@ -1100,7 +1099,6 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         pygame.mixer.music.load(f'Audio/Battle{self.music_list[0]}.mp3')
         pygame.mixer.music.play()  # начало проигрывания трека
         self.music_number += 1
-
         self.start_time = pygame.time.get_ticks()  # начало таймера игры
 
         score = 0
@@ -1138,9 +1136,11 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         self.end_event = pygame.USEREVENT + 3  # конец игры (пауза)
         self.update_time = pygame.USEREVENT + 2  # событие обновления экрана
         self.random_event = pygame.USEREVENT + 1  # событие генерации событий
-
+        self.harder = pygame.USEREVENT + 4  # событие увеличения скорости генерации
+        self.delta_time = 9
         pygame.time.set_timer(self.random_event, random.randint(1, 3) * 1000, 1)  # первое событие через 1-3 с
         pygame.time.set_timer(self.update_time, 10, 1)  # запуск события
+        pygame.time.set_timer(self.harder, 60000, 1)
 
         self.end = False  # конец игры
 
@@ -1192,7 +1192,6 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                                 Explosion(sprite.rect.center, (0.1 * width, 0.1 * height), self.other)
                                 sprite.kill()  # взрыв мины
                                 gun.set_volume(audio_volume)
-                                print(audio_volume)
                                 gun.play()
                                 score += 50
 
@@ -1209,6 +1208,12 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     if event.button == 2 and 0 < self.player.ammo < 3 and not self.player.reloading:
                         self.player.start_reloading()
 
+                if event.type == self.harder:
+                    if self.delta_time > 5:
+                        self.delta_time -= 0.5
+                        pygame.time.set_timer(self.harder, 60000, 1)
+                        print('1')
+
                 if event.type == self.random_event:  # генерация случайного события
                     if len(self.ship_group) != 1:
                         generated_event = random.choice(['мина' for _ in range(13)] + ['корабль' for _ in range(7)])
@@ -1222,7 +1227,9 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     else:
                         self.spawn_enemy()  # спавнит корабль врага
 
-                    pygame.time.set_timer(self.random_event, random.randint(7, 11) * 1000, 1)  # новое событие 7-11 с
+                    pygame.time.set_timer(self.random_event,
+                                          int(random.uniform(self.delta_time, self.delta_time + 5) * 1000), 1)
+                    # новое событие
                 if self.player.total_ammo == 0 and self.player.total_torpedoes == 0 and len(self.bonus_group) < 3:
                     Bonuses(random.uniform(0.1, 0.9) * width, 0.35 * height, self.bonus_group, random.randint(1, 41))
                     # если у игрока нет снарядов, приходит поддержка
