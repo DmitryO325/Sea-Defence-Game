@@ -655,6 +655,7 @@ class Shipyard(Menu):
         super().__init__()
         self.data = self.health, self.speed, self.ammo, self.reload = cursor.execute(
             f'SELECT HP, Speed, Ammo, Reload FROM Ship WHERE ID={playerID}').fetchone()
+
         self.Win = None
 
         screen.blit(self.picture, (0, 0))
@@ -665,7 +666,7 @@ class Shipyard(Menu):
         self.money = cursor.execute(f'SELECT money FROM Player WHERE ID={playerID}').fetchone()[0]
 
         self.info = (
-            (self.upgrade_health, self.health / 500, 'Броня',
+            (self.upgrade_health, self.health / 500, 'Здоровье',
              {100: 1000, 200: 2000, 300: 4000, 400: 8000, 500: 'max'}),
 
             (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость',
@@ -694,6 +695,23 @@ class Shipyard(Menu):
             pygame.display.flip()
 
     def draw_widgets(self):
+        self.data = self.health, self.speed, self.ammo, self.reload = cursor.execute(
+            f'SELECT HP, Speed, Ammo, Reload FROM Ship WHERE ID={playerID}').fetchone()
+
+        self.info = (
+            (self.upgrade_health, self.health / 500, 'Броня',
+             {100: 1000, 200: 2000, 300: 4000, 400: 8000, 500: 'max'}),
+
+            (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость',
+             {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000, 5: 'max'}),
+
+            (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас',
+             {2: 1000, 3: 2000, 4: 4000, 5: 8000, 6: 'max'}),
+
+            (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка',
+             {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000, 700: 'max'})
+        )
+
         Button(
             screen,
             round(width * 0.8),
@@ -849,6 +867,7 @@ class Player(Ship):  # класс игрока
         self.right = False  # плывём вправо
 
         self.reloading = False  # перезарядка орудия
+        self.torpedo_reloading = False  # перезарядка торпеды
 
         self.max_health = self.health  # для вывода количества оставшегося здоровья на шкале
 
@@ -869,7 +888,7 @@ class Player(Ship):  # класс игрока
 
         self.torpedo = 1  # торпеда готова к пуску
         self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
-                                       lambda: 1, completedColour='blue', incompletedColour='red')
+                                       lambda: self.torpedo, completedColour='blue', incompletedColour='red')
         # шкала готовности торпеды
 
     def gun_shot(self, coordinates, group, explosion_group):  # функция выстрела из пушки
@@ -903,18 +922,16 @@ class Player(Ship):  # класс игрока
             self.ammo = self.total_ammo
 
     def start_torpedo_reload(self):
+        self.torpedo_time = pygame.time.get_ticks()
+        self.torpedo_reloading = True
+
         self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
                                        lambda: (pygame.time.get_ticks() - self.torpedo_time) / 3000,
                                        completedColour='yellow', incompletedColour='red')
 
-        # обновление шкалы торпеды
-        self.total_torpedoes -= 1
-
-        self.torpedo = 0  # начало подготовки новой торпеды
-        self.torpedo_time = pygame.time.get_ticks()
-
     def torpedo_reload(self):
-        self.torpedo = 1  # торпеда готова
+        if self.total_torpedoes:  # торпеда готова
+            self.torpedo = 1
 
     def add_bullets(self, ammo):
         self.total_ammo += ammo  # добавление снарядов
@@ -953,7 +970,8 @@ class Player(Ship):  # класс игрока
                                        completedColour='blue', incompletedColour='red')
             # обновление шкалы пушки
 
-        if pygame.time.get_ticks() - self.torpedo_time >= 3000:
+        if pygame.time.get_ticks() - self.torpedo_time >= 3000 and self.torpedo_reloading:
+            self.torpedo_reloading = False
             self.torpedo_reload()  # завершение подготовки торпеды
 
             self.torpedo_bar = ProgressBar(screen, width * 0.05, height * 0.085, width * 0.2, height * 0.02,
@@ -963,8 +981,11 @@ class Player(Ship):  # класс игрока
         self.torpedo_bar.draw()  # прорисовка шкалы здоровья, пушки, торпеды
         self.health_bar.draw()
 
-        if not self.reloading and self.ammo == 0 and not self.total_ammo == 0:
+        if not self.reloading and self.ammo == 0 and self.total_ammo > 0:
             self.start_reloading()
+
+        if not self.torpedo_reloading and self.torpedo == 0 and self.total_torpedoes > 0:
+            self.start_torpedo_reload()
 
         if self.health <= 0:
             self.explode()
@@ -1351,6 +1372,11 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                         if self.player.torpedo and self.player.total_torpedoes > 0:
                             if event.pos[1] < height * 0.6:  # но вбок нельзя
                                 self.player.torpedo_shot(event.pos, self.torpedo_group, self.other)
+
+                                self.player.torpedo = 0
+                                self.player.total_torpedoes -= 1  # изменение в арсенале
+                                self.total_torpedoes_box.setText(self.player.total_torpedoes)
+
                                 self.player.start_torpedo_reload()
 
                     if event.button == 1:  # ЛКМ - выстрел из пушки
@@ -1374,7 +1400,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                             elif event.pos[1] < height * 0.6:  # но вбок нельзя
                                 self.player.gun_shot(event.pos, self.bullet_group, self.other)
 
-                    if event.button == 2 and 0 < self.player.ammo < 3 and not self.player.reloading:
+                    if (event.button == 2 and 0 < self.player.ammo < self.player.max_ammo and
+                            not self.player.reloading and not self.player.total_ammo == 0):
                         self.player.start_reloading()
 
                 if event.type == self.harder:
