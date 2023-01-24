@@ -41,6 +41,10 @@ class Menu(Window):
         player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,'
                                                                            f' Sounds FROM Player '
                                                                            f'WHERE ID={playerID}').fetchone()
+        if width == 0 and height == 0:
+            width = full_width
+            height = full_height
+            cursor.execute(f'UPDATE Player SET width={width}, height={height} WHERE ID={playerID}')
 
         size = width, height
         screen = pygame.display.set_mode(size)
@@ -370,7 +374,7 @@ class Name(Menu):  # переход к окну "Имя"
 
             cursor.execute(f'''INSERT INTO Player(
             Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
-            ('{self.name_box.getText()}', {full_width}, {full_height}, 120, 0, 1, 1, 0)''')
+            ('{self.name_box.getText()}', 0, 0, 120, 0, 1, 1, 0)''')
 
             cursor.execute(f'''INSERT INTO Ship(
                         HP, Ammo, Speed, Reload) VALUES (100, 2, 3, 1700)''')
@@ -499,7 +503,8 @@ class Options(Menu):
 
             self.update_sliders()
 
-            if self.combobox1.getSelected():
+            if self.combobox1.getSelected() and self.combobox1.getSelected()[0] <= full_width \
+                    and self.combobox1.getSelected()[1] <= full_height:
                 self.new_width, self.new_height = self.combobox1.getSelected()
 
             if self.combobox2.getSelected():
