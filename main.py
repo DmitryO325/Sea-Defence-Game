@@ -12,23 +12,9 @@ import math
 import random
 
 
-def delete_widgets():
-    pygame_widgets.WidgetHandler._widgets = []
-
-
-def load_image(name):
-    fullname = os.path.join('Images', name)
-    image = pygame.image.load(fullname)
-    return image
-
-
 class Window:  # класс, являющийся базой для создания других окон
     def __init__(self):
         self.running = True
-
-    def switch(self):
-        self.running = False
-        delete_widgets()
 
 
 class Menu(Window):  # класс, являющийся общим для окон из меню
