@@ -23,7 +23,7 @@ def load_image(name):
     return image
 
 
-class Window:
+class Window:  # класс, являющийся базой для создания других окон
     def __init__(self):
         self.running = True
 
@@ -32,15 +32,15 @@ class Window:
         delete_widgets()
 
 
-class Menu(Window):
+class Menu(Window):  # класс, являющийся общим для окон из меню
     def __init__(self):
         super().__init__()
         global player, playerID, width, height, music_volume, audio_volume, screen, size
 
         playerID = int(open("Data/last_player.txt").readline())
-        player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,'
-                                                                           f' Sounds FROM Player '
-                                                                           f'WHERE ID={playerID}').fetchone()
+        player, width, height, music_volume, audio_volume, fps = cursor.execute(f'SELECT name, width, height, music, '
+                                                                                f'sounds, FPS FROM Player '
+                                                                                f'WHERE ID={playerID}').fetchone()
 
         size = width, height
         screen = pygame.display.set_mode(size)
@@ -50,7 +50,7 @@ class Menu(Window):
         self.picture = pygame.transform.scale(self.picture, screen.get_size())
 
 
-class MainWindow(Menu):
+class MainWindow(Menu):  # класс главного меню
     def __init__(self):
         super().__init__()
         self.Win = None
@@ -71,30 +71,30 @@ class MainWindow(Menu):
             pygame_widgets.update(events)
             pygame.display.flip()
 
-    def end(self):
+    def end(self):  # метод выхода из игры
         self.switch()
 
-    def to_options(self):
+    def to_options(self):  # метод, который отвечает за переход к настройкам
         self.switch()
         self.Win = Options()
 
-    def to_top_players(self):
+    def to_top_players(self):  # метод, который отвечает за переход к топу игроков
         self.switch()
         self.Win = TopPlayers()
 
-    def to_shipyard(self):
+    def to_shipyard(self):  # метод, который отвечает за переход к верфи
         self.switch()
         self.Win = Shipyard()
 
-    def to_survival(self):
+    def to_survival(self):  # метод, который отвечает за переход к выживанию
         self.switch()
         self.Win = Battlefield()
 
-    def to_name(self):
+    def to_name(self):  # метод, который отвечает за переход к окну выбора имени
         self.switch()
         self.Win = Name()
 
-    def draw_buttons(self):
+    def draw_buttons(self):  # метод, отрисовывающий кнопки
         button_titles = ('name', 'Выживание', 'Верфь', 'Топ игроков', 'Настройки', 'Выход')
         button_functions = (self.to_survival, self.to_shipyard,
                             self.to_top_players, self.to_options, self.end)
@@ -160,7 +160,7 @@ class Name(Menu):  # переход к окну "Имя"
             pygame.display.flip()
 
     def draw_buttons(self):
-        self.names_combobox = Dropdown(
+        self.names_combobox = Dropdown(  # кнопка выбора имени
             screen,
             round(width * 0.35),
             round(height * 0.1),
@@ -225,23 +225,23 @@ class Name(Menu):  # переход к окну "Имя"
             onRelease=self.show_deleted_name
         )
 
-    def show_new_name(self):
+    def show_new_name(self):  # появляется окно для ввода нового имени
         self.is_change = 'new'
         self.delete_name_field()
 
-    def show_changed_name(self):
+    def show_changed_name(self):  # появляется окно для изменения имени
         self.is_change = 'change'
         self.delete_name_field()
 
-    def show_deleted_name(self):
+    def show_deleted_name(self):  # появляется окно для подтверждения удаления имени
         self.is_change = 'delete'
         self.delete_name_field()
 
-    def to_menu(self):
+    def to_menu(self):  # метод, позволяющий вернуться в главное окно
         self.switch()
         self.Win = MainWindow()
 
-    def change_data(self):
+    def change_data(self):  # метод, который изменяет информацию в текстовом файле last_player.txt
         with open('Data/last_player.txt', 'r+') as file:
             try:
                 if self.create_name:
@@ -273,8 +273,9 @@ class Name(Menu):  # переход к окну "Имя"
 
         self.to_menu()
 
-    def draw_field(self):
+    def draw_field(self):  # метод, показывающий/скрывающий поля для ввода
         if self.is_change in {'new', 'change'}:
+            # кнопка подсказки пользователю, появляется поверх кнопок с надписями "Создать/редактировать профиль"
             Button(
                 screen,
                 round(width * (0.7 - self.width_value)),
@@ -285,7 +286,7 @@ class Name(Menu):  # переход к окну "Имя"
                 textColour='red', fontSize=32, hoverColour='grey', pressedColour='darkgrey'
             )
 
-            self.name_box = TextBox(
+            self.name_box = TextBox(  # текстовое поле для создания/изменения профиля
                 screen,
                 round(width * (0.7 - self.width_value)),
                 round(height * 0.18),
@@ -294,7 +295,7 @@ class Name(Menu):  # переход к окну "Имя"
                 fontSize=32, colour='grey', hoverColour='yellow', pressedColour='red'
             )
 
-            Button(
+            Button(  # кнопка подтверждения изменений
                 screen,
                 round(width * (0.7 - self.width_value)),
                 round(height * 0.26),
@@ -305,7 +306,7 @@ class Name(Menu):  # переход к окну "Имя"
                 onRelease=self.new_name if self.is_change == 'new' else self.change_name
             )
 
-            Button(
+            Button(  # кнопка отмены изменений
                 screen,
                 round(width * (0.7 - self.width_value)),
                 round(height * 0.34),
@@ -319,7 +320,7 @@ class Name(Menu):  # переход к окну "Имя"
             self.width_value = 0
 
         else:
-            Button(
+            Button(  # кнопка удаления профиля
                 screen,
                 round(width * 0.07),
                 round(height * 0.83),
@@ -330,7 +331,7 @@ class Name(Menu):  # переход к окну "Имя"
                 onRelease=self.delete_name
             )
 
-            Button(
+            Button(  # кнопка отмены удаления
                 screen,
                 round(width * 0.07),
                 round(height * 0.9),
@@ -341,7 +342,7 @@ class Name(Menu):  # переход к окну "Имя"
                 onRelease=self.delete_name_field
             )
 
-    def name_is_occupied(self, status):
+    def name_is_occupied(self, status):  # метод, сообщающий об ошибке при создании/изменении профиля
         Button(
             screen,
             round(width * 0.7) if status == 'new' else round(width * 0.1),
@@ -354,15 +355,15 @@ class Name(Menu):  # переход к окну "Имя"
 
         self.name_status = 'repeat'
 
-    def delete_name_field(self):
+    def delete_name_field(self):  # метод, скрывающий ненужные элементы
         delete_widgets()
         self.draw_buttons()
 
-    def update_data(self):
+    def update_data(self):  # метод, обновляющий информацию в базе данных
         self.players_data = tuple(cursor.execute('''SELECT * FROM Player''').fetchall())
         self.players = tuple(map(lambda x: x[1], self.players_data))
 
-    def new_name(self):
+    def new_name(self):  # метод, добавляющий новое имя в базу данных
         try:
             if not self.name_box.getText():
                 self.name_status = 'empty'
@@ -370,10 +371,10 @@ class Name(Menu):  # переход к окну "Имя"
 
             cursor.execute(f'''INSERT INTO Player(
             Name, Width, Height, FPS, Money, Music, Sounds, Score) VALUES 
-            ('{self.name_box.getText()}', {full_width}, {full_height}, 120, 0, 1, 1, 0)''')
+            ('{self.name_box.getText()}', {full_width}, {full_height}, 240, 0, 1, 1, 0)''')
 
             cursor.execute(f'''INSERT INTO Ship(
-                        HP, Ammo, Speed, Reload) VALUES (100, 2, 3, 1700)''')
+                        HP, Ammo, Speed, Reload) VALUES (100, 2, 2, 1700)''')
 
             connection.commit()
             self.update_data()
@@ -385,7 +386,7 @@ class Name(Menu):  # переход к окну "Имя"
         except sqlite3.IntegrityError:
             self.name_is_occupied('new')
 
-    def change_name(self):
+    def change_name(self):  # метод, изменяющий информацию о профиле в базе данных
         try:
             if not self.name_box.getText():
                 self.name_status = 'empty'
@@ -404,9 +405,9 @@ class Name(Menu):  # переход к окну "Имя"
         except sqlite3.IntegrityError:
             self.name_is_occupied('change')
 
-    def delete_name(self):
+    def delete_name(self):  # метод, удаляющий профиль из базы данных
         if len(self.players) == 1:
-            Button(
+            Button(  # кнопка, сообщающая о невозможности удаления игрока из-за отсутствия других профилей
                 screen,
                 round(width * 0.35),
                 round(height * 0.03),
@@ -442,8 +443,10 @@ class Name(Menu):  # переход к окну "Имя"
             self.change_data()
 
 
-class Options(Menu):
+class Options(Menu):  # переход к окну "Имя"
     def __init__(self):
+        global FPS
+
         super().__init__()
         self.Win = None
 
@@ -474,8 +477,8 @@ class Options(Menu):
                                   direction='down', textHAlign='centre')
 
         self.combobox2 = Dropdown(screen, round(0.2 * width) + 200, round(0.5 * height), round(width * 0.3),
-                                  50, name='Максимальный FPS',  # настройка расширения экрана
-                                  choices=['120', '100', '80', '60', '40'],
+                                  50, name='Максимальный FPS',  # настройка частоты кадров
+                                  choices=['480', '360', '240', '120', '60'],
                                   borderRadius=3, colour='grey', fontSize=50,
                                   direction='down', textHAlign='centre')
 
@@ -503,8 +506,8 @@ class Options(Menu):
                 self.new_width, self.new_height = self.combobox1.getSelected()
 
             if self.combobox2.getSelected():
-                clock.tick(int(self.combobox2.getSelected()))
-                cursor.execute(f'UPDATE Player SET FPS={int(self.combobox2.getSelected())}')
+                FPS = int(self.combobox2.getSelected())
+                cursor.execute(f'UPDATE Player SET FPS={FPS}')
 
             screen.blit(self.picture, (0, 0))
             screen.blit(header_text, (round(0.4 * width), round(0.05 * height)))
@@ -516,7 +519,7 @@ class Options(Menu):
             pygame_widgets.update(events)
             pygame.display.flip()
 
-    def update_sliders(self):
+    def update_sliders(self):  # метод, обновляющий ползунки и данные о звуках
         self.music_value = self.music_slider.getValue()
         self.music_box.setText(str(round(100 * self.music_value)))
         pygame.mixer.music.set_volume(self.music_value)
@@ -524,7 +527,7 @@ class Options(Menu):
         self.sounds_value = self.sound_slider.getValue()
         self.sound_box.setText(str(round(100 * self.sounds_value)))
 
-    def draw_buttons(self):
+    def draw_buttons(self):  # метод, отрисовывающий кнопки
         Button(
             screen,
             round(width * 0.7),
@@ -536,7 +539,7 @@ class Options(Menu):
             onRelease=self.to_menu
         )
 
-    def to_menu(self):
+    def to_menu(self):  # метод, отправляющий игрока в главное меню
         global width, height, size, music_volume, audio_volume
 
         music_volume = self.music_slider.getValue()
@@ -564,7 +567,7 @@ class Options(Menu):
         self.Win = MainWindow()
 
 
-class TopPlayers(Menu):
+class TopPlayers(Menu):  # переход к окну "Топ игроков"
     def __init__(self):
         super().__init__()
         self.Win = None
@@ -616,7 +619,7 @@ class TopPlayers(Menu):
             pygame_widgets.update(events)
             pygame.display.flip()
 
-    def draw_widgets(self):
+    def draw_widgets(self):  # метод, отрисовывающий кнопки
         for h in range(10):
             for w in range(2):
                 try:
@@ -634,7 +637,7 @@ class TopPlayers(Menu):
                 cell.disable()
                 cell.draw()
 
-        Button(
+        Button(  # кнопка "В главное меню"
             screen,
             round(width * 0.7),
             round(height * 0.91),
@@ -650,7 +653,7 @@ class TopPlayers(Menu):
         self.Win = MainWindow()
 
 
-class Shipyard(Menu):
+class Shipyard(Menu):  # переход к окну "Верфь"
     def __init__(self):
         super().__init__()
         self.data = self.health, self.speed, self.ammo, self.reload = cursor.execute(
@@ -665,19 +668,7 @@ class Shipyard(Menu):
 
         self.money = cursor.execute(f'SELECT money FROM Player WHERE ID={playerID}').fetchone()[0]
 
-        self.info = (
-            (self.upgrade_health, self.health / 500, 'Здоровье',
-             {100: 1000, 200: 2000, 300: 4000, 400: 8000, 500: 'max'}),
-
-            (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость',
-             {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000, 5: 'max'}),
-
-            (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас',
-             {2: 1000, 3: 2000, 4: 4000, 5: 8000, 6: 'max'}),
-
-            (self.upgrade_reload, 1 - (self.reload - 700) / 1250, 'Перезарядка',
-             {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000, 700: 'max'})
-        )
+        self.info = None
 
         self.draw_widgets()
 
@@ -694,16 +685,13 @@ class Shipyard(Menu):
             pygame_widgets.update(events)
             pygame.display.flip()
 
-    def draw_widgets(self):
-        self.data = self.health, self.speed, self.ammo, self.reload = cursor.execute(
-            f'SELECT HP, Speed, Ammo, Reload FROM Ship WHERE ID={playerID}').fetchone()
-
+    def draw_widgets(self):  # метод, отрисовывающий кнопки
         self.info = (
             (self.upgrade_health, self.health / 500, 'Броня',
              {100: 1000, 200: 2000, 300: 4000, 400: 8000, 500: 'max'}),
 
-            (self.upgrade_speed, (self.speed - 2.5) / 2.5, 'Скорость',
-             {3: 1000, 3.5: 2000, 4: 4000, 4.5: 8000, 5: 'max'}),
+            (self.upgrade_speed, (self.speed - 2) / 2, 'Скорость',
+             {2: 1000, 3: 2000, 4: 4000, 5: 8000, 6: 'max'}),
 
             (self.upgrade_gun, (self.ammo - 1) / 5, 'Боезапас',
              {2: 1000, 3: 2000, 4: 4000, 5: 8000, 6: 'max'}),
@@ -712,7 +700,7 @@ class Shipyard(Menu):
              {1700: 1000, 1450: 2000, 1200: 4000, 950: 8000, 700: 'max'})
         )
 
-        Button(
+        Button(  # неактивная кнопка, показывающая количество имеющихся денег
             screen,
             round(width * 0.8),
             round(height * 0.05),
@@ -722,7 +710,7 @@ class Shipyard(Menu):
             fontSize=50, radius=10, borderThickness=5, borderColour='red'
         ).disable()
 
-        Button(
+        Button(  # кнопка "В главное меню"
             screen,
             round(width * 0.7),
             round(height * 0.91),
@@ -734,6 +722,7 @@ class Shipyard(Menu):
         )
 
         # эти прогресс-бары почему-то работают некорректно в циклах... приходится извращаться
+        # прогресс-бары, показывающие уровень прокачки определённых характеристик
         ProgressBar(screen, 0.27 * width, 0.03 * height + 0.18 * height * (0 + 1),
                     0.5 * width, 0.04 * height, progress=lambda: self.info[0][1],
                     completedColour='green', incompletedColour='grey')
@@ -750,7 +739,7 @@ class Shipyard(Menu):
                     0.5 * width, 0.04 * height, progress=lambda: self.info[3][1],
                     completedColour='green', incompletedColour='grey')
 
-        for h in range(4):
+        for h in range(4):  # кнопки улучшения характеристик
             Button(screen, 0.8 * width, 0.18 * height * (h + 1), 0.15 * width, 0.1 * height, colour='blue',
                    text=f'Улучшить: {self.info[h][3][self.data[h]]}', textColour='gold',
                    fontSize=50, radius=10, borderThickness=3, borderColour='silver',
@@ -761,7 +750,7 @@ class Shipyard(Menu):
                    fontSize=50, radius=10, borderThickness=3, borderColour='silver',
                    onClick=self.info[h][0], textHAlign='center').disable()
 
-    def upgrade_health(self):
+    def upgrade_health(self):  # метод, отвечающий за улучшение брони
         if self.health != 500:
             if self.money >= self.info[0][3][self.health]:
                 self.money -= self.info[0][3][self.health]
@@ -775,8 +764,8 @@ class Shipyard(Menu):
                 self.health += 100
                 self.draw_widgets()
 
-    def upgrade_speed(self):
-        if self.speed != 5:
+    def upgrade_speed(self):  # метод, отвечающий за улучшение скорости
+        if self.speed != 6:
             if self.money >= self.info[1][3][self.speed]:
                 self.money -= self.info[1][3][self.speed]
 
@@ -786,10 +775,10 @@ class Shipyard(Menu):
 
                 delete_widgets()
 
-                self.speed += 0.5
+                self.speed += 1
                 self.draw_widgets()
 
-    def upgrade_gun(self):
+    def upgrade_gun(self):  # метод, отвечающий за улучшение количества боеприпасов
         if self.ammo != 6:
             if self.money >= self.info[2][3][self.ammo]:
                 self.money -= self.info[2][3][self.ammo]
@@ -803,7 +792,7 @@ class Shipyard(Menu):
                 self.ammo += 1
                 self.draw_widgets()
 
-    def upgrade_reload(self):
+    def upgrade_reload(self):  # метод, отвечающий за улучшение времени перезарядки
         if self.reload != 700:
             if self.money >= self.info[3][3][self.reload]:
                 self.money -= self.info[3][3][self.reload]
@@ -1265,10 +1254,12 @@ class Bullet(pygame.sprite.Sprite):
 
 class Battlefield(Window):  # игровое поле, унаследовано от WINDOW
     def __init__(self):
+        global score
+
         super().__init__()
         self.music_number = 0  # номер саундтрека
 
-        global score
+        self.Win = None
 
         self.music_list = [int(j) for j in range(18)]
         random.shuffle(self.music_list)  # перемешка музыки
@@ -1333,6 +1324,8 @@ class Battlefield(Window):  # игровое поле, унаследовано 
         self.end = False  # конец игры
 
         while self.running:
+            clock.tick(FPS)
+
             if self.player.health <= 0 and not self.end:  # объявление конца игры
                 self.end = True
                 pygame.time.set_timer(self.end_event, 1500, 1)
@@ -1354,6 +1347,11 @@ class Battlefield(Window):  # игровое поле, унаследовано 
 
                     if event.key in {pygame.K_RIGHT, pygame.K_d}:
                         self.player.right = True
+
+                    all_keys = pygame.key.get_pressed()
+
+                    if all_keys[pygame.K_p] and (all_keys[pygame.K_LCTRL] or all_keys[pygame.K_RCTRL]):
+                        self.end_of_game()
 
                 if event.type == pygame.KEYUP:
                     if event.key in {pygame.K_LEFT, pygame.K_a}:  # для перемещения игрока по сторонам
@@ -1473,22 +1471,25 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     pygame.time.set_timer(self.update_time, 25, 1)
 
                 if event.type == self.end_event:
-                    pygame.mixer.music.stop()
+                    self.end_of_game()
 
-                    try:
-                        new_id = cursor.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
+    def end_of_game(self):  # метод, окончивающий игру
+        pygame.mixer.music.stop()
 
-                    except IndexError:
-                        new_id = 0
+        try:
+            new_id = cursor.execute('SELECT ID FROM GAME').fetchall()[-1][0] + 1
 
-                    time = ''.join(self.timer.text)
+        except IndexError:
+            new_id = 0
 
-                    cursor.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
-                    cursor.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+{score} WHERE ID={playerID}')
-                    connection.commit()
+        time = ''.join(self.timer.text)
 
-                    self.switch()  # переход на конечный экран
-                    self.Win = Endgame(''.join(self.timer.text))
+        cursor.execute(f'INSERT INTO GAME VALUES ({new_id}, "{player}", {score}, "{time}")')
+        cursor.execute(f'UPDATE Player SET Score=Score+{score}, Money=Money+{score} WHERE ID={playerID}')
+        connection.commit()
+
+        self.switch()  # переход на конечный экран
+        self.Win = Endgame(''.join(self.timer.text))
 
     def spawn_mine(self):  # функция спавна мины
         mine_width = random.uniform(0.05, 0.3)
@@ -1574,8 +1575,8 @@ class Cursor(pygame.sprite.Sprite):  # курсор игрока - вместо 
     def update(self):
         if pygame.mouse.get_focused():  # если мышь в окне
             x1, y1 = pygame.mouse.get_pos()
-            self.rect.x = x1  # перемещение в соответствии с мышью
-            self.rect.y = y1
+            self.rect.x = x1 - 0.025 * width  # перемещение в соответствии с мышью
+            self.rect.y = y1 - 0.025 * width
 
         else:
             self.rect.x = -100
@@ -1670,15 +1671,11 @@ if __name__ == '__main__':
     pygame.init()
 
     pygame.display.set_caption('Морская оборона')
-    # icon = pygame.image.load('Images/Icon.png')
-    # pygame.display.set_icon(icon)
 
     player = playerID = 0
 
     connection = sqlite3.connect('Data/database.sqlite')
     cursor = connection.cursor()
-
-    FPS = 60
 
     full_width, full_height = pygame.display.Info().current_w, pygame.display.Info().current_h
     size = width, height = pygame.display.Info().current_w, pygame.display.Info().current_h
@@ -1689,7 +1686,7 @@ if __name__ == '__main__':
     pygame.mixer.music.play(-1)
 
     clock = pygame.time.Clock()
-    clock.tick(FPS)
+    FPS = 240
 
     music_volume = 1
     audio_volume = 1
