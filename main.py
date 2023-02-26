@@ -38,8 +38,8 @@ class Menu(Window):
         global player, playerID, width, height, music_volume, audio_volume, screen, size
 
         playerID = int(open("Data/last_player.txt").readline())
-        player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,' 
-                                                                           f' Sounds FROM Player ' 
+        player, width, height, music_volume, audio_volume = cursor.execute(f'SELECT name, width, height, music,'
+                                                                           f' Sounds FROM Player '
                                                                            f'WHERE ID={playerID}').fetchone()
 
         size = width, height
@@ -1451,7 +1451,7 @@ class Battlefield(Window):  # игровое поле, унаследовано 
                     self.score.setText(score)
                     self.score.draw()
 
-                    self.timer.setText(f"{(pygame.time.get_ticks() - self.start_time) // 1000 // 60}:" 
+                    self.timer.setText(f"{(pygame.time.get_ticks() - self.start_time) // 1000 // 60}:"
                                        f"{str((pygame.time.get_ticks() - self.start_time) // 1000 % 60).zfill(2)}")
                     self.timer.draw()
 
